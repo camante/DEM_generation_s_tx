@@ -5,7 +5,7 @@ Description:
 Master Script to Generate DEMs for S TX. 
 
 Author:
-Chris Amante
+Christopher Amante
 Christopher.Amante@colorado.edu
 
 Date:

@@ -118,7 +118,7 @@ os.system(move_csv_cmd)
 #Calculate median depth. If positive, convert to negative.
 print "Converting pos2neg if necessary, ft2m, and removing header"
 os.chdir('csv')
-ft2m_cmd = 'usace_ft2m.sh .csv ,'
+ft2m_cmd = './usace_ft2m.sh .csv ,'
 os.system(ft2m_cmd)
 
 print "moving xyz files to xyz dir"
@@ -133,7 +133,7 @@ os.system(usace_vert_conv_cmd)
 
 print "Creating datalist"
 os.chdir('navd88')
-usace_datalist_cmd='create_datalist.sh usace_dredge'
+usace_datalist_cmd='./create_datalist.sh usace_dredge'
 os.system(usace_datalist_cmd)
 
 current_dir=os.getcwd()

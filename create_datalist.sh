@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 function help () {
 echo "create_datalist - Creates a datalist for all xyz files in a directory"

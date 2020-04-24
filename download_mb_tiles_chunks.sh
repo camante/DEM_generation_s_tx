@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash
 function help () {
 echo "download_mb_chunks.sh - A script that downloads mb data in chunks, runs blockmedian, and then converts to xyz."
     echo "Usage: $0 name_cell_extents cellsize"
@@ -100,8 +100,8 @@ echo $lat_diff
 echo
 
 #split up into smaller chunks
-lat_step=$(echo "$lat_diff / 10.0" | bc -l)
-lon_step=$(echo "$lon_diff / 10.0" | bc -l)
+lat_step=$(echo "$lat_diff / 2.0" | bc -l)
+lon_step=$(echo "$lon_diff / 2.0" | bc -l)
 
 echo "Lat Step is" $lat_step
 echo "Lon Step is" $lon_step
@@ -125,45 +125,35 @@ while [ "$(bc <<< "$west_chunk < $east_buffer")" == "1"  ]; do
     echo south_chunk is $south_chunk
     echo north_chunk is $north_chunk
 
-        # Do processing here
-        echo Downloading MB Data
-        mkdir -p $tile_name/$chunk_num
-        cd $tile_name/$chunk_num
+    # Do processing here
+    echo Downloading MB Data
+    mkdir -p $tile_name/$chunk_num
+    cd $tile_name/$chunk_num
 
-        echo $mb_range
-        #echo Command to Run is: mbfetch.py -R $west_chunk/$east_chunk/$south_chunk/$north_chunk
-        #mbfetch.py -R $west_chunk/$east_chunk/$south_chunk/$north_chunk
-        fetches mb -R $west_chunk/$east_chunk/$south_chunk/$north_chunk
+    echo $mb_range
+    fetches mb -R $west_chunk/$east_chunk/$south_chunk/$north_chunk
 
-        total_files=$(ls -1 | grep '*.*' | wc -l)
-        echo "Total number of mb-1 files to process:" $total_files
+    echo "Moving all fbt files to chunk directory"
+    find . -name '*.fbt' -mindepth 2 -exec mv -i -- {} . \;
 
-        if [ "$total_files" = "0" ]; 
-        then
-                echo "no data in chunk"
-                cd ..
-                cd ..
-                rm -r $tile_name/$chunk_num
-        else  
-                echo "data in chunk"
-                for i in *.*; 
-                do
-                echo "Converting to XYZ"
-                #mblist -F-1 -D3 -I$i | gmt gmtselect -R$west_chunk/$east_chunk/$south_chunk/$north_chunk | awk '{printf "%.8f %.8f %.3f\n", $1,$2,$3}' > $tile_name"_"$(basename $i .mb-1).xyz
-                mblist -OXYZ -K4 -MX20 -I$i -R$west_chunk/$east_chunk/$south_chunk/$north_chunk | awk '{printf "%.8f %.8f %.3f\n", $1,$2,$3}' > $tile_name"_"$(basename $i .mb-1).xyz;
+    echo "Converting fbt to xyz"
+	for i in *.fbt;
+	do
+		echo "Working on file" $i
+		echo "Converting to XYZ"
+		mblist -MX20 -OXYZ -I$i -R $west_chunk/$east_chunk/$south_chunk/$north_chunk | awk '{printf "%.8f %.8f %.3f\n", $1,$2,$3}' > $tile_name"_"$chunk_num"_"$(basename $i .fbt)".xyz"
+		echo "Running blockmedian"
+		gmt blockmedian $tile_name"_"$chunk_num"_"$(basename $i .fbt)".xyz" -I$blkmed_cell/$blkmed_cell -R$west_chunk/$east_chunk/$south_chunk/$north_chunk -V -Q > $tile_name"_"$chunk_num"_"$(basename $i .fbt)"_bm_tmp.xyz"
+		awk '{printf "%.8f %.8f %.2f\n", $1,$2,$3}' $tile_name"_"$chunk_num"_"$(basename $i .fbt)"_bm_tmp.xyz" > $tile_name"_"$chunk_num"_"$(basename $i .fbt)"_bm.xyz"
+		rm $tile_name"_"$chunk_num"_"$(basename $i .fbt)"_bm_tmp.xyz"
+		rm $tile_name"_"$chunk_num"_"$(basename $i .fbt)".xyz"
+	echo
+	echo
+	done
 
-                echo "Running blockmedian"
-                gmt blockmedian $tile_name"_"$(basename $i .mb-1).xyz -R$west_chunk/$east_chunk/$south_chunk/$north_chunk -I$blkmed_cell/$blkmed_cell > $tile_name"_"$(basename $i .mb-1)_blkmed.xyz
-                cd ..
-                cd .. 
-                awk '{printf "%.8f %.8f %.2f\n", $1,$2,$3}' $tile_name/$chunk_num/$tile_name"_"$(basename $i .mb-1)_blkmed.xyz > xyz/$tile_name"_"$chunk_num"_"$(basename $i .mb-1)_blkmed.xyz
-                cd $tile_name/$chunk_num
-                rm $tile_name"_"$(basename $i .mb-1).xyz
-                rm $tile_name"_"$(basename $i .mb-1)_blkmed.xyz
-                done
-                cd ..
-                cd ..
-        fi
+    cd ..
+    cd ..
+
     south_chunk=$(echo "$south_chunk+$lat_step" | bc)
     chunk_num=$((chunk_num+1))
     echo chunk num is $chunk_num
@@ -171,11 +161,10 @@ while [ "$(bc <<< "$west_chunk < $east_buffer")" == "1"  ]; do
     done
   west_chunk=$(echo "$west_chunk+$lon_step" | bc)
 done
-
-
-echo
-echo
 done
+
+echo "moving all xyz files to the same directory"
+find . -name '*.xyz' -exec mv {} xyz/ \; 2>/dev/null
 
 else
     help
@@ -183,9 +172,4 @@ fi
 
 
 
-
-
-
-
-
-
+#for i in */; do echo $i; cd $i; mkdir xyz; for j in *.*; do mblist -R-92.255/-88.495/28.495/31.005 -MX20 -OXYZ -I$j > xyz/$j.xyz; done; cd ..; done

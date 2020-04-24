@@ -23,18 +23,15 @@ import os
 import sys
 ######################## MB ###########################
 print "Current directory is ", os.getcwd()
-main_dir=sys.argv[1]
-name_cell_extents_dem=sys.argv[2]
-bs_dlist=sys.argv[3]
-
+roi_str_gmt=sys.argv[1]
+bs_dlist=sys.argv[2]
 #1 arc-sec
-#blkmed_cell=0.00027777777
+#bm_cell=0.00027777777
 #1/3 arc-sec res
-blkmed_cell=0.000092592596 
-print 'Downloading MB Surveys'
-mb_download_cmd='download_mb_chunks.sh ' + name_cell_extents_dem + ' '+str(blkmed_cell)
-print mb_download_cmd
-os.system(mb_download_cmd)
+bm_cell=0.000092592596 
+
+os.system('./download_mb_roi.sh {} {}'.format(roi_str_gmt, bm_cell))
+# ####
 
 print "Creating datalist"
 os.chdir('xyz')

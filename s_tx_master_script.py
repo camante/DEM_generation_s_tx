@@ -42,6 +42,7 @@ code_dir=main_dir+'/code/DEM_generation'+'_'+basename
 conv_grd_path=data_dir+'/conv_grd/cgrid_mllw2navd88.tif'
 name_cell_extents_bs=data_dir+'/bathy/bathy_surf/name_cell_extents_bs.csv'
 name_cell_extents_dem=software_dir+'/gridding/name_cell_extents_dem.csv'
+name_cell_extents_dem_all=software_dir+'/gridding/name_cell_extents_dem_all.csv'
 bs_dlist=data_dir+'/bathy/bathy_surf/s_tx_bs.datalist'
 dem_dlist=software_dir+'/gridding/s_tx_dem.datalist'
 bs_path=data_dir+'/bathy/bathy_surf/tifs'
@@ -79,6 +80,13 @@ roi_str_ogr=str(west_buff)+' '+str(south_buff)+' '+str(east_buff)+' '+str(north_
 #test_ROI
 #roi_str_gmt='-98.05/-96.45/25.7/29.05'
 #roi_str_ogr='-98.05 25.7 -96.45 29.05'
+
+#small mb test
+# west_buff=-97.5
+# east_buff=-97.25
+# south_buff=27.75
+# north_buff=28.0
+# roi_str_gmt=str(west_buff)+'/'+str(east_buff)+'/'+str(south_buff)+'/'+str(north_buff)
 
 print "ROI is", roi_str_gmt
 print "ROI OGR is", roi_str_ogr
@@ -160,13 +168,30 @@ for i in bathy_dir_list:
 # os.chdir(bathy_dir_list[0])
 # print 'Current Directory is', os.getcwd()
 
+######## CODE MANAGEMENT #########
 # #delete python script if it exists
 # os.system('[ -e usace_dredge_processing.py ] && rm usace_dredge_processing.py')
 # #copy python script from DEM_generation code
 # os.system('cp {}/usace_dredge_processing.py usace_dredge_processing.py'.format(code_dir)) 
 
+# #delete shell script if it exists
+# os.system('[ -e csv/usace_ft2m.sh ] && rm csv/usace_ft2m.sh')
+# #copy sh script from DEM_generation code
+# os.system('cp {}/usace_ft2m.sh csv/usace_ft2m.sh'.format(code_dir)) 
+
+# #delete shell script if it exists
+# os.system('[ -e xyz/vert_conv.sh ] && rm xyz/vert_conv.sh')
+# #copy sh script from DEM_generation code
+# os.system('cp {}/vert_conv.sh xyz/vert_conv.sh'.format(code_dir)) 
+
+# #delete shell script if it exists
+# os.system('[ -e xyz/navd88/create_datalist.sh ] && rm xyz/navd88/create_datalist.sh')
+# #copy sh script from DEM_generation code
+# os.system('cp {}/create_datalist.sh xyz/navd88/create_datalist.sh'.format(code_dir)) 
+######## CODE MANAGEMENT #########
+
 # print "executing usace_dredge_processing script"
-# os.system('python usace_dredge_processing.py {} {} {} {} {} {}'.format(main_dir, study_area_shp, roi_str_gmt, conv_grd_path, bs_dlist, dem_dlist))
+# os.system('python usace_dredge_processing.py {} {} {} {} {} {} {}'.format(main_dir, code_dir, study_area_shp, roi_str_gmt, conv_grd_path, bs_dlist, dem_dlist))
 
 # ######################## Multibeam #############################
 os.system('cd')
@@ -174,13 +199,27 @@ os.chdir(main_dir+'/data/bathy')
 os.chdir(bathy_dir_list[1])
 print 'Current Directory is', os.getcwd()
 
+os.system('mkdir -p xyz')
+
+######## CODE MANAGEMENT #########
 #delete python script if it exists
 os.system('[ -e mb_processing.py ] && rm mb_processing.py')
 #copy python script from DEM_generation code
-os.system('cp {}/mb_processing.py mb_processing.py'.format(code_dir)) 
+os.system('cp {}/mb_processing.py mb_processing.py'.format(code_dir))
 
+#delete shell script if it exists
+os.system('[ -e download_mb_roi.sh ] && rm download_mb_roi.sh')
+#copy sh script from DEM_generation code
+os.system('cp {}/download_mb_roi.sh download_mb_roi.sh'.format(code_dir)) 
+
+#delete shell script if it exists
+os.system('[ -e xyz/create_datalist.sh ] && rm xyz/create_datalist.sh')
+#copy sh script from DEM_generation code
+os.system('cp {}/create_datalist.sh xyz/create_datalist.sh'.format(code_dir)) 
+######## CODE MANAGEMENT #########
+#sys.exit()
 print "executing mb_processing script"
-os.system('python mb_processing.py {} {} {}'.format(main_dir, name_cell_extents_dem, bs_dlist))
+os.system('python mb_processing.py {} {}'.format(roi_str_gmt, bs_dlist))
 # ####
 # ########################## NOS/BAG ################################
 # os.system('cd')

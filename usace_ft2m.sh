@@ -1,3 +1,5 @@
+#!/bin/bash
+
 function help () {
 echo "usace_ft2m - Script that converts usace hydro from feet to meters and positive to negative if necessary. "
 	echo "Usage: $0 extension delim "

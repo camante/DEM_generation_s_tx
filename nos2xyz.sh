@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 function help () {
 echo "nos2xyz - Script that removes header and converts to XYZ, negative down for NOS files downloaded using nos_fetch.py"
 	echo "Usage: $0 extension delim "

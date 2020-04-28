@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 function help () {
 echo "bag2tif2chunks2xyz.sh - A script that unzips any .gz and converts all .bag files in a directory to .tif files and then chunks and then converts to xyz."
 	echo "Usage: $0 chunk_dims resamp cellsize"

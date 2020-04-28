@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 function help () {
 echo "vert_conv- Script that converts the vertical reference of all xyz data in a directoy based on a pre-generated conversion grid."
@@ -44,7 +44,7 @@ then
 	do
 	echo "Converting vertical datum " $i
 	echo 
-	gdal_query.py $query_delim -s_format "0,1,2" -d_format "xyzg" $conversion_grid $i | awk $awk_delim '{if ($4!=nan){print}}' | awk $awk_delim '{print $1,$2,$3+$4}' > $output_dir"/"$(basename $i .xyz)"_"$output_dir".xyz"
+	./gdal_query.py $query_delim -s_format "0,1,2" -d_format "xyzg" $conversion_grid $i | awk $awk_delim '{if ($4!=-9999){print}}' | awk $awk_delim '{print $1,$2,$3+$4}' > $output_dir"/"$(basename $i .xyz)"_"$output_dir".xyz"
 	echo
 	done
 

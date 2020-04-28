@@ -22,16 +22,19 @@ Date:
 import os
 import sys
 ######################## MB ###########################
-print "Current directory is ", os.getcwd()
 roi_str_gmt=sys.argv[1]
 bs_dlist=sys.argv[2]
+#other params
 #1 arc-sec
 #bm_cell=0.00027777777
 #1/3 arc-sec res
-bm_cell=0.000092592596 
+bm_cell=0.000092592596
+min_val=-125
+max_val= 0
 
-os.system('./download_mb_roi.sh {} {}'.format(roi_str_gmt, bm_cell))
-# ####
+print "Current directory is ", os.getcwd()
+print 'Downloading MB Surveys'
+os.system('./download_mb_roi.sh {} {} {} {}'.format(roi_str_gmt, bm_cell, min_val, max_val))
 
 print "Creating datalist"
 os.chdir('xyz')

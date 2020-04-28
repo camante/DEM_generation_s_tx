@@ -9,13 +9,17 @@ echo "download_mb_roi.sh - A script that downloads mb data in chunks from a WESN
 }
 
 
-if [ ${#@} == 2 ]; 
+if [ ${#@} == 4 ]; 
 then
 roi_str_gmt=$1
 bm_cell=$2
+min_val=$3
+max_val=$4
 
 echo "roi str gmt is" $roi_str_gmt
 echo "bm cellsize is" $bm_cell
+echo "min mb value is" $min_val
+echo "max mb value is" $max_val
 
 mkdir -p xyz
 echo "downloading all fbt files in study area ROI"
@@ -29,7 +33,7 @@ for i in *.fbt;
 do
 	echo "Working on file" $i
 	echo "Converting to XYZ"
-	mblist -MX20 -OXYZ -I$i -R$roi_str_gmt | awk '{printf "%.8f %.8f %.3f\n", $1,$2,$3}' > $(basename $i .fbt)".xyz"
+	mblist -MX20 -OXYZ -I$i -R$roi_str_gmt | awk -v min_val="$min_val" -v max_val="$max_val" '{if ($3 > min_val && $3 < max_val) {printf "%.8f %.8f %.3f\n", $1,$2,$3}}' > $(basename $i .fbt)".xyz"
 	echo "Running blockmedian"
 	gmt blockmedian $(basename $i .fbt)".xyz" -I$bm_cell/$bm_cell -R$roi_str_gmt -V -Q > $(basename $i .fbt)"_bm_tmp.xyz"
 	awk '{printf "%.8f %.8f %.2f\n", $1,$2,$3}' $(basename $i .fbt)"_bm_tmp.xyz" > xyz/$(basename $i .fbt)"_bm.xyz"

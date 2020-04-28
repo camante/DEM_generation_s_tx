@@ -25,31 +25,19 @@ Date:
 import os
 import sys
 ######################## NOS ####################################
-print "Current directory is ", os.getcwd()
-
-if not os.path.exists('nos_hydro'):
-	os.makedirs('nos_hydro')
-
-if not os.path.exists('nos_hydro/xyz'):
-	os.makedirs('nos_hydro/xyz')
-
-if not os.path.exists('nos_bag'):
-	os.makedirs('nos_bag')
-
-main_dir=sys.argv[1]
-roi_str=sys.argv[2]
-conv_grd_path=sys.argv[3]
-bs_dlist=sys.argv[4]
-dem_dlist=sys.argv[5]
-
+roi_str_gmt=sys.argv[1]
+conv_grd_path=sys.argv[2]
+bs_dlist=sys.argv[3]
+dem_dlist=sys.argv[4]
 #other params
 chunk_size=500
 resamp_bag='yes'
-#resamp_bag='no'
 resamp_res=0.000030864199
 
+
+print "Current directory is ", os.getcwd()
 print 'Downloading NOS / BAG Surveys'
-nos_download_cmd='nosfetch.py -R ' + roi_str
+nos_download_cmd='''fetches -R {} nos'''.format(roi_str_gmt)
 print nos_download_cmd
 os.system(nos_download_cmd)
 
@@ -73,21 +61,21 @@ os.system(move_xyz_cmd)
 
 print "Converting NOS to X,Y,Negative Z"
 os.chdir('xyz')
-neg_z_cmd=('nos2xyz.sh')
+neg_z_cmd=('./nos2xyz.sh')
 os.system(neg_z_cmd)
 
 print "Converting NOS to NAVD88"
 os.chdir('neg_m')
-nos2navd88_cmd="vert_conv.sh " + conv_grd_path + "  navd88"
+nos2navd88_cmd="./vert_conv.sh " + conv_grd_path + "  navd88"
 os.system(nos2navd88_cmd)
 
 print "Creating NOS Datalist"
 os.chdir('navd88')
-nos_datalist_cmd='create_datalist.sh nos'
+nos_datalist_cmd='./create_datalist.sh nos_hydro'
 os.system(nos_datalist_cmd)
 
 current_dir=os.getcwd()
-add_to_bmaster_cmd='echo ' + current_dir + '/nos.datalist -1 1 >> ' + bs_dlist
+add_to_bmaster_cmd='echo ' + current_dir + '/nos_hydro.datalist -1 1 >> ' + bs_dlist
 os.system(add_to_bmaster_cmd)
 
 
@@ -97,24 +85,23 @@ os.chdir('../../../..')
 os.chdir('nos_bag')
 
 print "Converting BAG to tif and to XYZ"
-bag2tif2chunks2xyz_cmd='bag2tif2chunks2xyz.sh ' +str(chunk_size) + ' ' + str(resamp_bag) + ' ' + str(resamp_res)
+bag2tif2chunks2xyz_cmd='''./bag2tif2chunks2xyz.sh {} {} {}'''.format(chunk_size,resamp_bag,resamp_res)
 os.system(bag2tif2chunks2xyz_cmd)
 
 print "Converting BAG to NAVD88"
 os.chdir('xyz')
-bag2navd88_cmd="vert_conv.sh " + conv_grd_path + "  navd88"
+bag2navd88_cmd="./vert_conv.sh " + conv_grd_path + "  navd88"
 #vert_conv.sh /media/sf_external_hd/al_fl/data/conv_grd/cgrid_mllw2navd88.tif navd88
 os.system(bag2navd88_cmd)
 
 print "Creating BAG Datalist"
 os.chdir('navd88')
-bag_datalist_cmd='create_datalist.sh bag'
+bag_datalist_cmd='./create_datalist.sh nos_bag'
 os.system(bag_datalist_cmd)
 
 current_dir=os.getcwd()
-add_to_bmaster_cmd='echo ' + current_dir + '/bag.datalist -1 10 >> ' + bs_dlist
+add_to_bmaster_cmd='echo ' + current_dir + '/nos_bag.datalist -1 10 >> ' + bs_dlist
 os.system(add_to_bmaster_cmd)
 
-add_to_master_cmd='echo ' + current_dir + '/bag.datalist -1 1 >> ' + dem_dlist
+add_to_master_cmd='echo ' + current_dir + '/nos_bag.datalist -1 1 >> ' + dem_dlist
 os.system(add_to_master_cmd)
-

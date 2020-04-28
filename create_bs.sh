@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 function help () {
 echo "create_bs- Script that creates a bathy surface at 1 arc-sec for multiple DEM tiles and resamples it to 1/3rd or 1/9th arc-sec and then converts it xyz for TBDEMs."
 	echo "Usage: $0 name_cell_extents datalist coastline bs_res"

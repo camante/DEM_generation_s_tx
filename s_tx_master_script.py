@@ -183,7 +183,7 @@ echo {} -1 0.000001 >> {}
 fi'''.format(bs_dlist,bs_dlist,bs_topo_guide_dlist,bs_dlist)
 os.system(create_bs_dlist)
 
-create_dem_dlist=''''if [ ! -e {} ] ; 
+create_dem_dlist='''if [ ! -e {} ] ; 
 then touch {}
 echo {} -1 0.000001 >> {}
 fi'''.format(dem_dlist,dem_dlist,bs_ind_dlist,dem_dlist)

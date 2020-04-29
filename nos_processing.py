@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 Description:
 -Download NOS with fetch

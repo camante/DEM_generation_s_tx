@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 Description:
 Process USACE Dredge Surveys downloaded with fetch.
@@ -41,7 +42,7 @@ os.system(move_zip_cmd)
 
 print "unzipping all zip files"
 os.chdir('zip')
-unzip_cmd='unzip "*.ZIP"'
+unzip_cmd='unzip -o "*.ZIP"'
 os.system(unzip_cmd)
 
 os.chdir('..')
@@ -99,6 +100,10 @@ print "moving csv files to directory"
 move_csv_cmd="find . -name '*_nad83_mllw.csv' -exec mv {} csv/ \; 2>/dev/null"
 os.system(move_csv_cmd)
 
+print "Deleting zips and gdb directories"
+os.system('''rm -rf zip''')
+os.system('''rm -rf gdb''')
+
 #most survey are in feet, positive down. But a few are negative.
 #Calculate median depth. If positive, convert to negative.
 print "Converting pos2neg if necessary, ft2m, and removing header"
@@ -127,3 +132,4 @@ os.system(add_to_bmaster_cmd)
 
 add_to_master_cmd='echo ' + current_dir + '/usace_dredge.datalist -1 10 >> ' + dem_dlist
 os.system(add_to_master_cmd)
+

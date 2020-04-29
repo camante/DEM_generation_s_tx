@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 Description:
 -Download USGS NHDPlus with fetch
@@ -29,15 +30,21 @@ import glob
 #Params from master script:
 basename=sys.argv[1]
 main_dir=sys.argv[2]
-study_area_shp=sys.argv[3]
-roi_str_ogr=sys.argv[4]+' '+sys.argv[5]+' '+sys.argv[6]+' '+sys.argv[7]
-roi_str_gmt=sys.argv[8]
+west_buff=sys.argv[3]
+east_buff=sys.argv[4]
+south_buff=sys.argv[5]
+north_buff=sys.argv[6]
+study_area_shp=sys.argv[7]
+roi_str_gmt=str(west_buff)+'/'+str(east_buff)+'/'+str(south_buff)+'/'+str(north_buff)
+roi_str_ogr=str(west_buff)+' '+str(south_buff)+' '+str(east_buff)+' '+str(north_buff)
+coast_res=0.00003086420
+
 dataset_dir=os.getcwd()
-print "Dataset Directory is ", dataset_dir
+print "Current Directory is ", dataset_dir
 
 #Additional Params:
 landsat_shp='/media/sf_C_win_lx/coastal_act/data/coast/landsat_all_NA.shp'
-mx_shp='cuerpo_agua_nad83_clip_edit.shp'
+mx_shp=main_dir+'/manual/data/coast/mx/cuerpo_agua_nad83_clip_edit.shp'
 #script removes disconnected rivers by only keep the largest poly (num_nhd_polys=1). 
 #If need large disconnected rivers,esp. on tile edges that got cut off, make value higher, e.g. num_nhd_polys=2.
 num_nhd_polys='1'
@@ -45,7 +52,7 @@ num_nhd_polys='1'
 ############ ANALYSIS ##################
 
 print "Rasterizing Study Area w Buff"
-rast_study_area_cmd = '''gdal_rasterize -tr 0.00003086420 0.00003086420 -te {} -burn 0 -ot Int16 -co COMPRESS=DEFLATE {} {}_tiles_buff.tif'''.format(roi_str_ogr,study_area_shp,basename)
+rast_study_area_cmd = '''gdal_rasterize -tr {} {} -te {} -burn 0 -ot Int16 -co COMPRESS=DEFLATE {} {}_tiles_buff.tif'''.format(coast_res,coast_res,roi_str_ogr,study_area_shp,basename)
 os.system(rast_study_area_cmd)
 
 print "Copying Raster to burn Landsat"
@@ -86,7 +93,7 @@ mv_cmd4='''mv {}/data/coast/landsat/{}_landsat/landsat_all_NA.prj {}/data/coast/
 os.system(mv_cmd4)
 
 print "Rasterizing Landsat Shp"
-raster_shp_cmd = '''gdal_rasterize -te {} -i -burn 1 -l {}_landsat {}_landsat.shp {}_landsat.tif'''.format(roi_str_ogr,basename,basename,basename)
+raster_shp_cmd = '''gdal_rasterize -tr {} {} -te {} -i -burn 1 -l {}_landsat {}_landsat.shp {}_landsat.tif'''.format(coast_res,coast_res,roi_str_ogr,basename,basename,basename)
 os.system(raster_shp_cmd)
 
 
@@ -95,7 +102,7 @@ os.chdir('..')
 os.chdir('nhd')
 
 print 'Downloading nhd from USGS'
-nhd_download_cmd='''fetches -R {} tnm:dataset=6:formats=FileGDB:extent='HU-4 Subregion' '''.format(roi_str_gmt)
+nhd_download_cmd='''fetches -R {} tnm:ds=6:formats=FileGDB:extent='HU-4 Subregion' '''.format(roi_str_gmt)
 print nhd_download_cmd
 #sys.exit()
 os.system(nhd_download_cmd)
@@ -106,7 +113,7 @@ os.system(move_zip_cmd)
 
 print "Unzipping NHD GDB"
 os.chdir('zip')
-unzip_cmd='unzip "*.zip"'
+unzip_cmd='unzip -o "*.zip"'
 os.system(unzip_cmd)
 os.chdir('..')
 
@@ -169,7 +176,7 @@ clip_nhd_cmd='''ogr2ogr -clipsrc {} {}_nhd.shp shp/merge/nhdArea_merge.shp'''.fo
 os.system(clip_nhd_cmd)
 
 print "Rasterizing Shp"
-raster_shp_cmd2 = '''gdal_rasterize -te {} -tr 0.00003086420 0.00003086420 -burn 1 -ot Int16 -co COMPRESS=DEFLATE {}_nhd.shp {}_nhd.tif'''.format(roi_str_ogr,basename,basename)
+raster_shp_cmd2 = '''gdal_rasterize -tr {} {} -te {} -burn 1 -ot Int16 -co COMPRESS=DEFLATE {}_nhd.shp {}_nhd.tif'''.format(coast_res,coast_res,roi_str_ogr,basename,basename)
 #gdal_rasterize -te roi_str_ogr -tr 0.00003086420 0.00003086420 -burn 1 -ot Int16 -co COMPRESS=DEFLATE w_fl_nhd_test.shp w_fl_nhd_test.tif
 os.system(raster_shp_cmd2)
 
@@ -184,16 +191,20 @@ rm_polys_cmd = '''ogr2ogr -dialect SQLITE -sql "SELECT * FROM {}_nhd_rast WHERE 
 os.system(rm_polys_cmd)
 
 print "Re-Rasterizing Shp"
-raster_shp_cmd = '''gdal_rasterize -te {} -burn 1 -l {}_nhd_clean {}_nhd_clean.shp {}_nhd_clean.tif'''.format(roi_str_ogr,basename,basename,basename)
+raster_shp_cmd = '''gdal_rasterize -tr {} {} -te {} -burn 1 -l {}_nhd_clean {}_nhd_clean.shp {}_nhd_clean.tif'''.format(coast_res,coast_res,roi_str_ogr,basename,basename,basename)
 os.system(raster_shp_cmd)
 
+print "Deleting zips and gdb directories"
+os.system('''rm -rf zip''')
+os.system('''rm -rf gdb''')
 
 os.chdir('..')
+
 ############ MX ##################
 os.chdir('mx')
 
 print "Rasterizing Shp"
-raster_shp_cmd3 = '''gdal_rasterize -tr 0.00003086420 0.00003086420 -te {} -burn 1 -ot Int16 -co COMPRESS=DEFLATE {} {}_mx.tif'''.format(roi_str_ogr,mx_shp,basename)
+raster_shp_cmd3 = '''gdal_rasterize -tr {} {} -te {} -burn 1 -ot Int16 -co COMPRESS=DEFLATE {} {}_mx.tif'''.format(coast_res,coast_res,roi_str_ogr,mx_shp,basename)
 os.system(raster_shp_cmd3)
 
 os.chdir('..')
@@ -229,3 +240,4 @@ print "Removing Bathy Areas"
 rm_bathy_cmd = '''ogr2ogr -dialect SQLITE -sql "SELECT * FROM {}_coast_all WHERE DN='0'" {}_coast.shp {}_coast_all.shp'''.format(basename,basename,basename)
 #ogr2ogr -dialect SQLITE -sql "SELECT * FROM w_fl_coast_all_test WHERE DN='0'" w_fl_coast_test.shp w_fl_coast_all_test.shp
 os.system(rm_bathy_cmd)
+

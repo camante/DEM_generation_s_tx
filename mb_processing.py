@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 Description:
 -Download MB with fetch

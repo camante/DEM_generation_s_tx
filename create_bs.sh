@@ -1,15 +1,16 @@
 #!/bin/bash
 function help () {
 echo "create_bs- Script that creates a bathy surface at 1 arc-sec for multiple DEM tiles and resamples it to 1/3rd or 1/9th arc-sec and then converts it xyz for TBDEMs."
-	echo "Usage: $0 name_cell_extents datalist coastline bs_res"
+	echo "Usage: $0 name_cell_extents datalist coastline mb1"
 	echo "* name_cell_extents: <csv file with name,target spatial resolution in decimal degrees,tile_exents in W,E,S,N>"
 	echo "* datalist: <master datalist file that points to individual datasets datalists>"
 	echo "* coastline: <coastline shapefile for clipping. Don't include .shp extension >"
+	echo "* mb1: <use mb1 from previous one as input datalist: yes or no >"
 }
 
 #see if 3 parameters were provided
 #show help if not
-if [ ${#@} == 3 ]; 
+if [ ${#@} == 4 ]; 
 	then
 	mkdir -p xyz
 	mkdir -p topo_guide
@@ -23,6 +24,7 @@ if [ ${#@} == 3 ];
 	name_cell_extents=$1
 	datalist_orig=$2
 	coastline_full=$3
+	mb1=$4
 
 	#Create BS at 1 arc-sec
 	bs_res=0.00027777777
@@ -61,7 +63,7 @@ if [ ${#@} == 3 ];
 	echo "East is" $east_quarter
 	echo "South is" $south_quarter
 	echo "North is" $north_quarter
-	echo "Original Datalist is" $datalist
+	echo "Original Datalist is" $datalist_orig
 	echo
 
 	#Add on additional cells at bathy_surf resolution to ensure complete coverage of each tile and alignment with 1/9th and 1/3rd res
@@ -71,17 +73,23 @@ if [ ${#@} == 3 ];
 	south=$(echo "$south_quarter - $bs_align_cells" | bc -l)
 
 	#if mb1 file already exists for tile, use that. This speeds up processing time if input data files didn't change.
-	if [ -f $"save_mb1/"$name".mb-1" ]; then
-		echo "Mb1 file exists, using as datalist"
-		cp "save_mb1/"$name".mb-1" $name".datalist"
-		datalist=$(echo $name".datalist")
+	if [ $mb1 = "yes" ]; then
+		echo "seeing if MB1 file is available to use"
+		if [ -f $"save_mb1/"$name".mb-1" ]; then
+			echo "MB1 file exists, using as datalist"
+			cp "save_mb1/"$name".mb-1" $name".datalist"
+			datalist=$(echo $name".datalist")
+		else
+			echo "MB1 file doesn't exist, using orig datalist"
+			cp $datalist_orig $name".datalist"
+		fi
+
 	else
-		echo "MB1 file doesn't exist, using orig datalist"
+		echo "MB1 paramter is NO, so using original datalist"
 		cp $datalist_orig $name".datalist"
 	fi
 
 	datalist=$(echo $name".datalist")
-
 
 	#Take in a half-cell on all sides so that grid-registered raster edge aligns exactly on desired extent
 	half_cell=$(echo "$bs_res / 2" | bc -l)

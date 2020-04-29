@@ -32,16 +32,16 @@ import glob
 #################################################################
 conv_grd_process='yes'
 coast_process='yes'
-#bathy
 usace_dredge_process='yes'
 mb_process='yes'
 nos_process='yes'
 enc_process='yes'
 dc_lidar_process='yes'
-#non-dc lidar
-#grids
-#bathy surf
-#dem
+#tnm_lidar_process='no'
+#grids_process='no'
+bathy_surf_process='yes'
+dem_process='yes'
+#spatial_meta_process='no'
 #################################################################
 #################################################################
 #################################################################
@@ -61,13 +61,18 @@ code_dir=main_dir+'/code/DEM_generation'+'_'+basename
 #Bathy Surface Variables
 manual_name_cell_extents_bs=manual_dir+'/data/bathy/bathy_surf/'+basename+'_name_cell_extents_bs.csv'
 name_cell_extents_bs=data_dir+'/bathy/bathy_surf/'+basename+'_name_cell_extents_bs.csv'
+bs_topo_guide_dlist=data_dir+'/bathy/bathy_surf/topo_guide/topo_guide.datalist'
 bs_dlist=data_dir+'/bathy/bathy_surf/'+basename+'_bs.datalist'
+bs_ind_dlist=data_dir+'/bathy/bathy_surf/xyz/bathy_surf.datalist'
 bs_tifs=data_dir+'/bathy/bathy_surf/tifs'
 coast_shp=data_dir+'/coast/'+basename+'_coast'
+bs_mb1_var='no'
 #DEM Gridding Variables
 manual_name_cell_extents_dem=manual_dir+'/software/gridding/'+basename+'_name_cell_extents_dem.csv'
 name_cell_extents_dem=software_dir+'/gridding/'+basename+'_name_cell_extents_dem.csv'
 dem_dlist=software_dir+'/gridding/'+basename+'_dem.datalist'
+dem_smooth_factor=5
+dem_mb1_var='no'
 #Conversion Grid Variables
 ivert='mllw'
 overt='navd88'
@@ -90,11 +95,12 @@ north_buff=29.05
 roi_str_gmt=str(west_buff)+'/'+str(east_buff)+'/'+str(south_buff)+'/'+str(north_buff)
 roi_str_ogr=str(west_buff)+' '+str(south_buff)+' '+str(east_buff)+' '+str(north_buff)
 
-#small bathy download test
-west_buff=-97.28
-east_buff=-97.26
-south_buff=27.84
-north_buff=27.86
+#E_04 tile test
+#E_04_1_9,0.00003086420,-97.25,-97.0,27.75,28.0
+west_buff=-97.3
+east_buff=-96.95
+south_buff=27.7
+north_buff=28.05
 roi_str_gmt=str(west_buff)+'/'+str(east_buff)+'/'+str(south_buff)+'/'+str(north_buff)
 roi_str_ogr=str(west_buff)+' '+str(south_buff)+' '+str(east_buff)+' '+str(north_buff)
 
@@ -170,14 +176,17 @@ for i in software_dir_list:
 #################################################################
 #################################################################
 #Create Empty Bathy Surface and DEM Master datalists if they don't exist
-create_bs_dlist='''if [ ! -e {}/bathy/bathy_surf/{}_bs.datalist ] ; 
-then touch {}/bathy/bathy_surf/{}_bs.datalist
-fi'''.format(data_dir,basename,data_dir,basename)
+#Add topo guide to bathy surface datalist
+create_bs_dlist='''if [ ! -e {} ] ; 
+then touch {}
+echo {} -1 0.000001 >> {}
+fi'''.format(bs_dlist,bs_dlist,bs_topo_guide_dlist,bs_dlist)
 os.system(create_bs_dlist)
 
-create_dem_dlist='''if [ ! -e {}/gridding/{}_dem.datalist ] ; 
-then touch {}/gridding/{}_dem.datalist
-fi'''.format(software_dir,basename,software_dir,basename)
+create_dem_dlist=''''if [ ! -e {} ] ; 
+then touch {}
+echo {} -1 0.000001 >> {}
+fi'''.format(dem_dlist,dem_dlist,bs_ind_dlist,dem_dlist)
 os.system(create_dem_dlist)
 
 #################################################################
@@ -450,9 +459,9 @@ if dc_lidar_process=='yes':
 	
 	######### CODE MANAGEMENT #########
 
-	#delete python script if it exists
+	#delete shell script if it exists
 	os.system('[ -e download_process_lidar.sh ] && rm download_process_lidar.sh')
-	#copy python script from DEM_generation code
+	#copy shell script from DEM_generation code
 	os.system('cp {}/download_process_lidar.sh download_process_lidar.sh'.format(code_dir))
 
 	#delete shell script if it exists
@@ -468,8 +477,7 @@ if dc_lidar_process=='yes':
 	os.system('[ -e create_datalist.sh ] && rm create_datalist.sh')
 	#copy sh script from DEM_generation code
 	os.system('cp {}/create_datalist.sh create_datalist.sh'.format(code_dir)) 
-	######## CODE MANAGEMENT #########
-	#sys.exit()
+
 	print "executing dc_lidar_processing script"
 	os.system('./download_process_lidar.sh {} {} {} {}'.format(dc_lidar_csv,study_area_shp,bs_dlist,dem_dlist))
 	####
@@ -477,8 +485,8 @@ else:
 	print "Skipping DC Lidar Processing"
 
 
-
 #### NON DIGITAL COAST LIDAR
+# manually create shapefile of missing lidar from digital coast lidar shp.
 #2017 FEMA Region 6 TX - Red River QL2 Lidar (NATIONAL MAP)
 
 # # #################################################################
@@ -488,16 +496,23 @@ else:
 # # #################################################################
 # # #################################################################
 # # #################################################################
-# os.system('cd')
-# os.chdir(main_dir+'/data/bathy')
+if bathy_surf_process=='yes':
+	os.system('cd')
+	os.chdir(data_dir+'/bathy/bathy_surf')
+	print 'Current Directory is', os.getcwd()
+	
+	######### CODE MANAGEMENT #########
 
-# # Create Bathy Surface 
-# if not os.path.exists('bathy_surf'):
-#  	os.makedirs('bathy_surf')
+	#delete shell script if it exists
+	os.system('[ -e create_bs.sh ] && rm create_bs.sh')
+	#copy shell script from DEM_generation code
+	os.system('cp {}/create_bs.sh create_bs.sh'.format(code_dir))
 
-# os.chdir('bathy_surf')
-# bathy_surf_cmd='create_bs.sh ' + name_cell_extents_bs + ' ' + bs_dlist + ' ' + coast_shp
-# os.system(bathy_surf_cmd)
+	print "executing create_bs.sh script"
+	os.system('./create_bs.sh {} {} {} {}'.format(name_cell_extents_bs,bs_dlist,coast_shp,bs_mb1_var))
+	####
+else:
+	print "Skipping Bathy Surface Processing"
 
 # # # #################################################################
 # # # #################################################################
@@ -507,11 +522,25 @@ else:
 # # # #################################################################
 # # # #################################################################
 # #Create DEM
-# os.system('cd')
-# os.chdir(main_dir)
-# os.chdir('software/gridding')
+if dem_process=='yes':
+	os.system('cd')
+	os.chdir(software_dir+'/gridding')
+	print 'Current Directory is', os.getcwd()
+	
+	######### CODE MANAGEMENT #########
 
-# create_dem_cmd='create_dem.sh ' + name_cell_extents_dem + ' ' + dem_dlist + ' ' + str(5)
-# #create_dem.sh /media/sf_E_win_lx/COASTAL_Act/camante/s_tx/software/gridding/name_cell_extents_dem.csv /media/sf_E_win_lx/COASTAL_Act/camante/s_tx/software/gridding/s_tx.datalist /media/sf_E_win_lx/COASTAL_Act/camante/s_tx/data/bathy/bathy_surf/tifs 5
-# #create_dem.sh /media/sf_E_win_lx/COASTAL_Act/camante/s_tx/software/gridding/name_cell_extents_dem.csv /media/sf_E_win_lx/COASTAL_Act/camante/s_tx/software/gridding/s_tx.datalist 5
-# os.system(create_dem_cmd)
+	#delete shell script if it exists
+	os.system('[ -e create_dem.sh ] && rm create_dem.sh')
+	#copy shell script from DEM_generation code
+	os.system('cp {}/create_dem.sh create_dem.sh'.format(code_dir))
+
+	#delete py script if it exists
+	os.system('[ -e smooth_dem_bathy.py ] && rm smooth_dem_bathy.py')
+	#copy py script from DEM_generation code
+	os.system('cp {}/smooth_dem_bathy.py smooth_dem_bathy.py'.format(code_dir))
+
+	print "executing create_dem.sh script"
+	os.system('./create_dem.sh {} {} {} {}'.format(name_cell_extents_dem,dem_dlist,dem_smooth_factor,dem_mb1_var))
+	####
+else:
+	print "Skipping Bathy Surface Processing"

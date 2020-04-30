@@ -98,11 +98,13 @@ else
 	./separate_pos_neg.sh
 	cd pos
 	./create_datalist.sh $dir_name"_lidar_pos"
-	echo "$PWD/$dir_name"_lidar_pos".datalist -1 "$weight >> $dem_dlist
+	#dont use positive topobathy data values because I have newer, better topo lidar
+	#echo "$PWD/$dir_name"_lidar_pos".datalist -1 "$weight >> $dem_dlist
 	cd ..
 	cd neg 
 	./create_datalist.sh $dir_name"_lidar_neg"
 	echo "$PWD/$dir_name"_lidar_neg".datalist -1 "$weight >> $bs_dlist
+	echo "$PWD/$dir_name"_lidar_neg".datalist -1 "$weight >> $dem_dlist
 	cd ..
 	rm *.laz
 fi

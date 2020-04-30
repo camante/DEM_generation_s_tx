@@ -30,18 +30,19 @@ import glob
 #################################################################
 #################################################################
 #################################################################
-conv_grd_process='yes'
-coast_process='yes'
+conv_grd_process='no'
+coast_process='no'
 usace_dredge_process='yes'
 mb_process='yes'
 nos_process='yes'
 enc_process='yes'
-dc_lidar_process='yes'
-#tnm_lidar_process='no'
-#grids_process='no'
+#dc_lidar_process='yes'
+tnm_lidar_process='no'
+mx_topo_process='yes'
+#grids_process='yes'
 bathy_surf_process='yes'
 dem_process='yes'
-#spatial_meta_process='no'
+# spatial_meta_process='no'
 #################################################################
 #################################################################
 #################################################################
@@ -95,22 +96,24 @@ north_buff=29.05
 roi_str_gmt=str(west_buff)+'/'+str(east_buff)+'/'+str(south_buff)+'/'+str(north_buff)
 roi_str_ogr=str(west_buff)+' '+str(south_buff)+' '+str(east_buff)+' '+str(north_buff)
 
+#test areas
+
 #E_04 tile test
 #E_04_1_9,0.00003086420,-97.25,-97.0,27.75,28.0
-west_buff=-97.3
-east_buff=-96.95
-south_buff=27.7
-north_buff=28.05
-roi_str_gmt=str(west_buff)+'/'+str(east_buff)+'/'+str(south_buff)+'/'+str(north_buff)
-roi_str_ogr=str(west_buff)+' '+str(south_buff)+' '+str(east_buff)+' '+str(north_buff)
-
 #roi_str_gmt='-98.05/-96.45/25.7/29.05'
 #roi_str_ogr='-98.05 25.7 -96.45 29.05'
+
+# west_buff=-97.3
+# east_buff=-96.95
+# south_buff=27.7
+# north_buff=28.05
+# roi_str_gmt=str(west_buff)+'/'+str(east_buff)+'/'+str(south_buff)+'/'+str(north_buff)
+# roi_str_ogr=str(west_buff)+' '+str(south_buff)+' '+str(east_buff)+' '+str(north_buff)
 
 #study area with buffer
 study_area_shp=manual_dir+'/data/study_area/'+basename+'_tiles_buff.shp'
 #test out with 1 tile (E_04)
-study_area_shp=manual_dir+'/data/study_area/'+basename+'_tiles_test_buff.shp'
+#study_area_shp=manual_dir+'/data/study_area/'+basename+'_tiles_test_buff.shp'
 
 #################################################################
 #################################################################
@@ -484,10 +487,68 @@ if dc_lidar_process=='yes':
 else:
 	print "Skipping DC Lidar Processing"
 
+#############################################################
+################## TNM LIDAR ################################
+#############################################################
+if tnm_lidar_process=='yes':
+	os.system('cd')
+	os.chdir(data_dir+'/dc_lidar')
+	print 'Current Directory is', os.getcwd()
+	
+	######### CODE MANAGEMENT #########
 
-#### NON DIGITAL COAST LIDAR
-# manually create shapefile of missing lidar from digital coast lidar shp.
-#2017 FEMA Region 6 TX - Red River QL2 Lidar (NATIONAL MAP)
+	#delete shell script if it exists
+	os.system('[ -e download_process_lidar.sh ] && rm download_process_lidar.sh')
+	#copy shell script from DEM_generation code
+	os.system('cp {}/download_process_lidar.sh download_process_lidar.sh'.format(code_dir))
+
+	#delete shell script if it exists
+	os.system('[ -e laz2xyz.sh ] && rm laz2xyz.sh')
+	#copy sh script from DEM_generation code
+	os.system('cp {}/laz2xyz.sh laz2xyz.sh'.format(code_dir)) 
+
+	os.system('[ -e separate_pos_neg.sh ] && rm separate_pos_neg.sh')
+	#copy sh script from DEM_generation code
+	os.system('cp {}/separate_pos_neg.sh separate_pos_neg.sh'.format(code_dir))
+
+	#delete shell script if it exists
+	os.system('[ -e create_datalist.sh ] && rm create_datalist.sh')
+	#copy sh script from DEM_generation code
+	os.system('cp {}/create_datalist.sh create_datalist.sh'.format(code_dir)) 
+
+	print "executing dc_lidar_processing script"
+	os.system('./download_process_lidar.sh {} {} {} {}'.format(dc_lidar_csv,study_area_shp,bs_dlist,dem_dlist))
+	####
+else:
+	print "Skipping TNM Lidar Processing"
+
+
+#############################################################
+################## MX TOPO ##################################
+#############################################################
+if mx_topo_process=='yes':
+	os.system('cd')
+	os.chdir(manual_dir+'/data/topo/mx')
+	print 'Current Directory is', os.getcwd()
+	
+	######### CODE MANAGEMENT #########
+	os.system('mkdir -p xyz')
+
+	#delete shell script if it exists
+	os.system('[ -e mx_topo_processing.sh ] && rm mx_topo_processing.sh')
+	#copy shell script from DEM_generation code
+	os.system('cp {}/mx_topo_processing.sh mx_topo_processing.sh'.format(code_dir))
+
+	#delete shell script if it exists
+	os.system('[ -e xyz/create_datalist.sh ] && rm xyz/create_datalist.sh')
+	#copy sh script from DEM_generation code
+	os.system('cp {}/create_datalist.sh xyz/create_datalist.sh'.format(code_dir)) 
+
+	print "executing mc_topo_processing script"
+	os.system('./mx_topo_processing.sh {}'.format(dem_dlist))
+	####
+else:
+	print "Skipping MX Topo Processing"
 
 # # #################################################################
 # # #################################################################
@@ -543,4 +604,4 @@ if dem_process=='yes':
 	os.system('./create_dem.sh {} {} {} {}'.format(name_cell_extents_dem,dem_dlist,dem_smooth_factor,dem_mb1_var))
 	####
 else:
-	print "Skipping Bathy Surface Processing"
+	print "Skipping DEM Processing"

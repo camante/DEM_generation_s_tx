@@ -38,6 +38,7 @@ enc_download_cmd='''fetches -R {} charts -p'''.format(roi_str_gmt)
 print enc_download_cmd
 os.system(enc_download_cmd)
 
+### OLD METHOD ###
 # old method, before using Matt's processing option
 # move_xyz_cmd="find . -name '*.xyz' -exec mv {} xyz/ \; 2>/dev/null"
 # os.system(move_xyz_cmd)
@@ -56,6 +57,7 @@ os.system(enc_download_cmd)
 # os.chdir('navd88')
 # enc_datalist_cmd='./create_datalist.sh enc'
 # os.system(enc_datalist_cmd)
+### OLD METHOD ###
 
 # new method
 os.chdir('charts/ogr/xyz')

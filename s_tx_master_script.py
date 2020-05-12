@@ -32,14 +32,14 @@ import glob
 #################################################################
 conv_grd_process='no'
 coast_process='no'
-usace_dredge_process='yes'
-mb_process='yes'
-nos_process='yes'
-enc_process='yes'
-#dc_lidar_process='yes'
+usace_dredge_process='no'
+mb_process='no'
+nos_process='no'
+enc_process='no'
+dc_lidar_process='no'
 tnm_lidar_process='no'
-mx_topo_process='yes'
-#grids_process='yes'
+mx_topo_process='no'
+grid_process='no'
 bathy_surf_process='yes'
 dem_process='yes'
 # spatial_meta_process='no'
@@ -67,12 +67,14 @@ bs_dlist=data_dir+'/bathy/bathy_surf/'+basename+'_bs.datalist'
 bs_ind_dlist=data_dir+'/bathy/bathy_surf/xyz/bathy_surf.datalist'
 bs_tifs=data_dir+'/bathy/bathy_surf/tifs'
 coast_shp=data_dir+'/coast/'+basename+'_coast'
+#use files listed in existing mb1 files at datalist
 bs_mb1_var='no'
 #DEM Gridding Variables
 manual_name_cell_extents_dem=manual_dir+'/software/gridding/'+basename+'_name_cell_extents_dem.csv'
 name_cell_extents_dem=software_dir+'/gridding/'+basename+'_name_cell_extents_dem.csv'
 dem_dlist=software_dir+'/gridding/'+basename+'_dem.datalist'
 dem_smooth_factor=5
+#use files listed in existing mb1 files at datalist
 dem_mb1_var='no'
 #Conversion Grid Variables
 ivert='mllw'
@@ -81,6 +83,8 @@ conv_grd_name='cgrid_'+ivert+'2'+overt+'.tif'
 conv_grd_path=data_dir+'/conv_grd/'+conv_grd_name
 #Lidar Download Variables
 dc_lidar_csv=manual_dir+'/data/dc_lidar/dc_lidar_download_process.csv'
+tnm_lidar_man_path=manual_dir+'/data/topo/tnm_lidar/'
+tnm_lidar_csv=tnm_lidar_man_path+'tnm_lidar_download_process.csv'
 
 #################################################################
 #################################################################
@@ -112,6 +116,8 @@ roi_str_ogr=str(west_buff)+' '+str(south_buff)+' '+str(east_buff)+' '+str(north_
 
 #study area with buffer
 study_area_shp=manual_dir+'/data/study_area/'+basename+'_tiles_buff.shp'
+#outer ring shp to get surrounding tiles data to ensure seamless across tiles 
+study_area_buff_outer_shp=manual_dir+'/data/study_area/'+basename+'_tiles_buff_outer.shp'
 #test out with 1 tile (E_04)
 #study_area_shp=manual_dir+'/data/study_area/'+basename+'_tiles_test_buff.shp'
 
@@ -130,7 +136,7 @@ for i in main_dir_list:
 		os.makedirs(i)
 
 #Creating main data subdirectories
-data_dir_list=[data_dir+'/bathy',data_dir+'/coast',data_dir+'/conv_grd',data_dir+'/dc_lidar',data_dir+'/grids']
+data_dir_list=[data_dir+'/bathy',data_dir+'/coast',data_dir+'/conv_grd',data_dir+'/dc_lidar',data_dir+'/topo/tnm_lidar',data_dir+'/grids']
 for i in data_dir_list:
 	if not os.path.exists(i):
 		print 'creating subdir', i
@@ -151,18 +157,18 @@ for i in docs_dir_list:
 		os.makedirs(i)
 
 #Creating main manual subdirectories
-manual_dir_list=[manual_dir+'/data/coast',manual_dir+'/data/study_area']
+manual_dir_list=[manual_dir+'/data/coast',manual_dir+'/data/study_area', manual_dir+'/data/grids/ncei']
 for i in manual_dir_list:
 	if not os.path.exists(i):
 		print 'creating subdir', i
 		os.makedirs(i)
 
-#Creating main grids subdirectories
-grid_dir_list=[data_dir+'/grids/ncei',data_dir+'/grids/usgs']
-for i in grid_dir_list:
-	if not os.path.exists(i):
-		print 'creating subdir', i
-		os.makedirs(i)
+# #Creating main DEM grids subdirectories available on Digital Coast / National Map
+# grid_dir_list=[data_dir+'/grids/ncei',data_dir+'/grids/usgs']
+# for i in grid_dir_list:
+# 	if not os.path.exists(i):
+# 		print 'creating subdir', i
+# 		os.makedirs(i)
 
 #Creating main software subdirectories
 software_dir_list=[software_dir+'/gridding']
@@ -240,10 +246,10 @@ else:
 #################################################################
 ####################### STUDY AREA ##############################
 #################################################################
-#manually created shp in ArcGIS (s_tx_tiles.shp) 
+#manually created shp in Global Mapper / ArcGIS (s_tx_tiles.shp) 
 #created name_cell_extents with arcpy get_poly_coords.py (name_cell_extents_bs.csv; name_cell_extents_DEM.csv) 
 #manually created study area buffer in ArcMap (s_tx_tiles_buff.shp)
-#manuallu created outer buffer to grab adjacenet NCEI tiles DEMs (s_tx_tiles_buff_outer.shp) using arcmap erase(s_tx_tiles_buff.shp,s_tx_tiles.shp)
+#manually created outer buffer to grab adjacenet NCEI tiles DEMs (s_tx_tiles_buff_outer.shp) using arcmap erase(s_tx_tiles_buff.shp,s_tx_tiles.shp)
 # #################################################################
 # ######################## COASTLINE ##############################
 # #################################################################
@@ -273,7 +279,6 @@ else:
 # #################################################################
 # ########################## BATHY ################################
 # #################################################################
-#usace_dredge,mb,nos,enc
 # ####################### USACE DREDGE #############################
 if usace_dredge_process=='yes':
 	os.system('cd')
@@ -492,20 +497,20 @@ else:
 #############################################################
 if tnm_lidar_process=='yes':
 	os.system('cd')
-	os.chdir(data_dir+'/dc_lidar')
+	os.chdir(data_dir+'/topo/tnm_lidar')
 	print 'Current Directory is', os.getcwd()
 	
 	######### CODE MANAGEMENT #########
 
 	#delete shell script if it exists
-	os.system('[ -e download_process_lidar.sh ] && rm download_process_lidar.sh')
+	os.system('[ -e tnm_download_process_lidar.sh ] && rm tnm_download_process_lidar.sh')
 	#copy shell script from DEM_generation code
-	os.system('cp {}/download_process_lidar.sh download_process_lidar.sh'.format(code_dir))
+	os.system('cp {}/tnm_download_process_lidar.sh tnm_download_process_lidar.sh'.format(code_dir))
 
 	#delete shell script if it exists
-	os.system('[ -e laz2xyz.sh ] && rm laz2xyz.sh')
+	os.system('[ -e laz2xyz_repro_latlon_m.sh ] && laz2xyz_repro_latlon_m.sh')
 	#copy sh script from DEM_generation code
-	os.system('cp {}/laz2xyz.sh laz2xyz.sh'.format(code_dir)) 
+	os.system('cp {}/laz2xyz_repro_latlon_m.sh laz2xyz_repro_latlon_m.sh'.format(code_dir)) 
 
 	os.system('[ -e separate_pos_neg.sh ] && rm separate_pos_neg.sh')
 	#copy sh script from DEM_generation code
@@ -516,12 +521,11 @@ if tnm_lidar_process=='yes':
 	#copy sh script from DEM_generation code
 	os.system('cp {}/create_datalist.sh create_datalist.sh'.format(code_dir)) 
 
-	print "executing dc_lidar_processing script"
-	os.system('./download_process_lidar.sh {} {} {} {}'.format(dc_lidar_csv,study_area_shp,bs_dlist,dem_dlist))
+	print "executing tnm_lidar_processing script"
+	os.system('./tnm_download_process_lidar.sh {} {} {} {}'.format(tnm_lidar_man_path,tnm_lidar_csv,bs_dlist,dem_dlist))
 	####
 else:
 	print "Skipping TNM Lidar Processing"
-
 
 #############################################################
 ################## MX TOPO ##################################
@@ -550,6 +554,32 @@ if mx_topo_process=='yes':
 else:
 	print "Skipping MX Topo Processing"
 
+#############################################################
+################## EXISTING GRIDS ###########################
+#############################################################
+if grid_process=='yes':
+	os.system('cd')
+	os.chdir(manual_dir+'/data/grids/ncei')
+	print 'Current Directory is', os.getcwd()
+	
+	######### CODE MANAGEMENT #########
+	os.system('mkdir -p xyz')
+
+	#delete shell script if it exists
+	os.system('[ -e grids_ncei_processing.sh.sh ] && rm grids_ncei_processing.sh')
+	#copy shell script from DEM_generation code
+	os.system('cp {}/grids_ncei_processing.sh grids_ncei_processing.sh'.format(code_dir))
+
+	#delete shell script if it exists
+	os.system('[ -e xyz/create_datalist.sh ] && rm xyz/create_datalist.sh')
+	#copy sh script from DEM_generation code
+	os.system('cp {}/create_datalist.sh xyz/create_datalist.sh'.format(code_dir)) 
+
+	print "executing grids_ncei_processing.sh script"
+	os.system('./grids_ncei_processing.sh {} {} {}'.format(study_area_buff_outer_shp,bs_dlist,dem_dlist))
+	####
+else:
+	print "Skipping Grids_ncei Processing"
 # # #################################################################
 # # #################################################################
 # # #################################################################
@@ -582,7 +612,6 @@ else:
 # # # #################################################################
 # # # #################################################################
 # # # #################################################################
-# #Create DEM
 if dem_process=='yes':
 	os.system('cd')
 	os.chdir(software_dir+'/gridding')

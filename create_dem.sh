@@ -118,7 +118,7 @@ echo --Running mbgrid...
 mbgrid -I$datalist -O$dem_name \
 $mb_range \
 -A2 -D$x_dim_int/$y_dim_int -G3 -N \
--C810000000/3 -S0 -F1 -T0.25 -X0.05
+-C810000000/3 -S0 -F1 -T0.35 -X0.05
 
 # echo --Running mbgrid with no interpolation to test...
 # mbgrid -I$datalist -O$dem_name \
@@ -157,11 +157,11 @@ else
 	echo "Smoothing 1_3 arc-sec DEM if not running in arcpy mosaic"
 	./smooth_dem_bathy.py "tifs/"$name"_DEM_tmp.tif" -s $smooth_factor
 	mv "tifs/"$name"_DEM_tmp_smooth_"$smooth_factor".tif" "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor"_tmp.tif"
-	gdalwarp -t_srs EPSG:4269 "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor"_tmp.tif" "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor".tif"
+	gdalwarp -r cubicspline "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor"_tmp.tif" "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor".tif"
 	rm "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor"_tmp.tif"
 
 	echo "Resampling to 1/9th arc-sec to run in arcpy mosaic later"
-	gdalwarp "tifs/"$name"_DEM_tmp.tif" -r cubicspline -tr 0.00003086420 0.00003086420 -t_srs EPSG:4269 "tifs/"$name"_DEM.tif" -overwrite
+	gdalwarp "tifs/"$name"_DEM_tmp.tif" -r cubicspline -tr 0.00003086420 0.00003086420 "tifs/"$name"_DEM.tif" -overwrite
 	rm "tifs/"$name"_DEM_tmp.tif"
 	
 	echo "Smoothing 1/9th DEM"

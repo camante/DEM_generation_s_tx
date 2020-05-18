@@ -40,8 +40,9 @@ dc_lidar_process='no'
 tnm_lidar_process='no'
 mx_topo_process='no'
 grid_process='no'
-bathy_surf_process='yes'
+bathy_surf_process='no'
 dem_process='yes'
+dem_format_process='no'
 # spatial_meta_process='no'
 #################################################################
 #################################################################
@@ -634,3 +635,33 @@ if dem_process=='yes':
 	####
 else:
 	print "Skipping DEM Processing"
+
+# # # #################################################################
+# # # #################################################################
+# # # #################################################################
+# # # ####################### DEM FORMATTING ##########################
+# # # #################################################################
+# # # #################################################################
+# # # #################################################################
+if dem_format_process=='yes':
+	os.system('cd')
+	os.chdir(software_dir+'/gridding/tifs')
+	print 'Current Directory is', os.getcwd()
+	
+	######### CODE MANAGEMENT #########
+
+	#delete shell script if it exists
+	os.system('[ -e create_dem.sh ] && rm create_dem.sh')
+	#copy shell script from DEM_generation code
+	os.system('cp {}/create_dem.sh create_dem.sh'.format(code_dir))
+
+	#delete py script if it exists
+	os.system('[ -e smooth_dem_bathy.py ] && rm smooth_dem_bathy.py')
+	#copy py script from DEM_generation code
+	os.system('cp {}/smooth_dem_bathy.py smooth_dem_bathy.py'.format(code_dir))
+
+	print "executing create_dem.sh script"
+	os.system('./create_dem.sh {} {} {} {}'.format(name_cell_extents_dem,dem_dlist,dem_smooth_factor,dem_mb1_var))
+	####
+else:
+	print "Skipping DEM Formatting Processing"

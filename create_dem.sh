@@ -17,7 +17,6 @@ mkdir -p save_mb1
 mkdir -p save_datalists
 mkdir -p tifs
 mkdir -p tifs/smoothed
-mkdir -p tifs/smoothed/1_3
 
 name_cell_extents=$1
 datalist_orig=$2
@@ -146,29 +145,6 @@ else
 	echo "cmd file didn't exist"
 fi
 
-
-
-if [ $target_res = 0.00003086420 ]; then
-	echo "DEM is already 1/9th arc-sec"
-
-else
-	echo "DEM is 1/3 arc-sec"
-	mv "tifs/"$name"_DEM.tif" "tifs/"$name"_DEM_tmp.tif" 
-	echo "Smoothing 1_3 arc-sec DEM if not running in arcpy mosaic"
-	./smooth_dem_bathy.py "tifs/"$name"_DEM_tmp.tif" -s $smooth_factor
-	mv "tifs/"$name"_DEM_tmp_smooth_"$smooth_factor".tif" "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor"_tmp.tif"
-	gdalwarp -r cubicspline "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor"_tmp.tif" "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor".tif"
-	rm "tifs/smoothed/1_3/"$name"_DEM_smooth_"$smooth_factor"_tmp.tif"
-
-	echo "Resampling to 1/9th arc-sec to run in arcpy mosaic later"
-	gdalwarp "tifs/"$name"_DEM_tmp.tif" -r cubicspline -tr 0.00003086420 0.00003086420 "tifs/"$name"_DEM.tif" -overwrite
-	rm "tifs/"$name"_DEM_tmp.tif"
-	
-	echo "Smoothing 1/9th DEM"
-	./smooth_dem_bathy.py "tifs/"$name"_DEM.tif" -s $smooth_factor
-	mv "tifs/"$name"_DEM_smooth_"$smooth_factor".tif" "tifs/smoothed/"$name"_DEM_smooth_"$smooth_factor".tif"
-	echo
-fi
 done
 
 else

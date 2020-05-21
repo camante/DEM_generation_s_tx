@@ -1,33 +1,55 @@
-echo "Creating Shps of DEM Extents"
-for i in *.tif
-do
-echo "Processing" $i
-gdal_calc.py -A $i --outfile=$(basename $i .tif)"_zero.tif"  --calc="A*0"
-gdal_polygonize.py $(basename $i .tif)"_zero.tif" -f "ESRI Shapefile" $(basename $i .tif)".shp"
-rm $(basename $i .tif)"_zero.tif"
-echo "Created shp for" $i
-#
-# TO DO:
-# If Not 1/9th, resample to 1/9th
-# 
-echo
-done
-
-
-echo "Merging Tifs in Name Cell Extents"
+#!/bin/bash
 tile_extents=$1
-year=2020
-version=1
+smooth_factor=$2
+year=$3
+version=$4
+#finest cell size resolution, e.g., 1/9th arc-sec, provided in gdalinfo
+fine_cell=0.000030864197534
+
+mkdir -p 1_3
 mkdir -p review
 
+echo "Creating Shps of DEM Extents and any border DEMs"
+for i in *.tif
+do
+	echo "Processing" $i
+	gdal_calc.py -A $i --outfile=$(basename $i .tif)"_zero.tif"  --calc="A*0"
+	gdal_polygonize.py $(basename $i .tif)"_zero.tif" -f "ESRI Shapefile" $(basename $i .tif)".shp"
+	echo "Created shp for" $i
+
+	raster_cellsize=`gdalinfo $i | grep -e "Pixel Size" | awk '{print $4}' | sed -e 's/.*(\(.*\),.*/\1/'`
+	echo "raster cellsize is" $raster_cellsize
+
+	if [ "$raster_cellsize" = "$fine_cell" ]
+	then
+		echo "cell size is already at the finest res, no resampling needed"
+		rm $(basename $i .tif)"_zero.tif"
+	else
+		echo "Resampling to the finest resolution to use in mosaic"
+		gdalwarp $(basename $i .tif)"_zero.tif" -tr $fine_cell $fine_cell $(basename $i .tif)"_zero_ninth.tif" -overwrite
+		resamp_factor_flt=$(echo "$raster_cellsize / $fine_cell" | bc -l)
+		echo "Resampling Factor float is" $resamp_factor_flt
+		resamp_factor=$(echo "($resamp_factor_flt+0.5)/1" | bc)
+		echo "Resampling factor is" $resamp_factor
+		python ./resample.py $i $(basename $i .tif)"_zero_ninth.tif" $resamp_factor
+		mv $i "1_3/"$(basename $i .tif)"_orig.tif"
+		mv $(basename $i .tif)"_resamp.tif" $i
+		rm $(basename $i .tif)"_zero.tif"
+		rm $(basename $i .tif)"_zero_ninth.tif"
+	fi
+	echo
+done
+
+echo "Merging Tifs in Name Cell Extents"
 # Get Tile Name, Cellsize, and Extents from tile_extents_gridding.txt
 IFS=,
 sed -n '/^ *[^#]/p' $tile_extents |
 while read -r line
 do
 name=$(echo $line | awk '{print $1}')
-full_name=$name"_DEM_smooth_5.shp"
-raster_name=$(basename $full_name .shp)".tif"
+raster_name=$name"_DEM_smooth_"$smooth_factor".tif"
+main_shp_name=$(basename $raster_name .tif)".shp"
+
 cellsize_degrees=$(echo $line | awk '{print $2}')
 west=$(echo $line | awk '{print $3}')
 east=$(echo $line | awk '{print $4}')
@@ -64,7 +86,6 @@ else
 fi
 
 size=${#west_decimal}
-#echo "Number of West decimals is" $size
 if [ "$size" = 1 ]
 then
 	west_decimal="$west_decimal"0
@@ -74,7 +95,6 @@ fi
 
 echo
 echo "Input Tile Name is" $name
-#echo "Cellsize in degrees is" $cellsize_degrees
 
 if [ "$cellsize_degrees" = 0.00003086420 ]
 then
@@ -84,13 +104,13 @@ else
 fi
 
 #add raster to vrt list
-ls $(basename $full_name .shp)".tif" >> $name"_dem_list.txt"
+ls $raster_name >> $name"_dem_list.txt"
 #Create txt for all other shps
 
 #list all shps to text
 ls *.shp > $name"_shp_list.txt"
 #remove shp in question
-sed -i "/$full_name/d" $name"_shp_list.txt"
+sed -i "/$main_shp_name/d" $name"_shp_list.txt"
 
 # #go through generated txt and clip each shp in file to the main shp
 # # Get Tile Name, Cellsize, and Extents from tile_extents_gridding.txt
@@ -100,16 +120,11 @@ while read -r line
 do
 shp_name=$(echo $line | awk '{print $1}')
 
-echo "Clipping" $shp_name "overlaps with" $full_name
-#full_name=D_03_1_9_DEM_smooth_5.shp
-#shp_name=outside.shp
-output_name=$(basename $full_name .shp)"_"$(basename $shp_name .shp)"_clipped.shp"
-#echo "Output_name is" $output_name
-#output_name=test.shp
-ogr2ogr $output_name $full_name -clipsrc $shp_name
+echo "Clipping" $shp_name "overlaps with main shp" $main_shp_name
+output_name=$(basename $main_shp_name .shp)"_"$(basename $shp_name .shp)"_clipped.shp"
+ogr2ogr $output_name $main_shp_name -clipsrc $shp_name
 gdalwarp -cutline $output_name -crop_to_cutline -of GTiff -dstnodata -999999 $(basename $shp_name .shp)".tif" $(basename $output_name .shp)".tif"
-#ogr2ogr $name"_coast.shp" $coastline_full".shp" -clipsrc $x_min $y_min $x_max $y_max
-#if shp is not empty, clip raster
+
 rm $output_name
 rm $(basename $output_name .shp)".shx"
 rm $(basename $output_name .shp)".dbf"
@@ -126,16 +141,14 @@ echo "Creating Mosaic Raster"
 python ./average_tifs.py $name".vrt"
 
 echo "Completing Final Formating of DEM"
-gdalwarp -dstnodata -999999 -r average -tr $cellsize_degrees $cellsize_degrees $name"_mosaic.tif" $name"_final_tmp.tif"
+gdalwarp -dstnodata -999999 -tr $cellsize_degrees $cellsize_degrees $name"_mosaic.tif" $name"_final_tmp.tif"
 gdal_translate -of GTiff -a_srs EPSG:4269 -a_nodata -999999 -co "COMPRESS=DEFLATE" -co "PREDICTOR=3" -co "TILED=YES" $name"_final_tmp.tif" "review/ncei"$cell_name"_n"$north_degree"X"$north_decimal"_w0"$west_degree"X"$west_decimal"_"$year"v"$version".tif" -stats
-
 
 echo "Removing Clipped tifs"
 sed 1d $name"_dem_list.txt" |
 while read -r line
 do
 clipped_tif=$(echo $line | awk '{print $1}')
-#rm $clipped_tif
 echo "removing" $clipped_tif
 rm $clipped_tif
 done
@@ -148,4 +161,13 @@ rm $name"_mosaic.tif"
 rm $name"_final_tmp.tif"
 rm $name"_final_tmp.tif.aux.xml"
 
+echo
+echo
+
 done
+
+echo "Removing all shps"
+rm *.shp
+rm *.shx
+rm *.dbf
+rm *.prj

@@ -41,8 +41,8 @@ tnm_lidar_process='no'
 mx_topo_process='no'
 grid_process='no'
 bathy_surf_process='no'
-dem_process='yes'
-dem_format_process='no'
+dem_process='no'
+dem_format_process='yes'
 # spatial_meta_process='no'
 #################################################################
 #################################################################
@@ -53,6 +53,8 @@ dem_format_process='no'
 #################################################################
 #Project Area
 basename="s_tx"
+year=2020
+version=1
 #Main Directory Paths
 main_dir='/media/sf_E_win_lx/COASTAL_Act/camante/'+basename
 data_dir=main_dir+'/data'
@@ -72,11 +74,13 @@ coast_shp=data_dir+'/coast/'+basename+'_coast'
 bs_mb1_var='no'
 #DEM Gridding Variables
 manual_name_cell_extents_dem=manual_dir+'/software/gridding/'+basename+'_name_cell_extents_dem.csv'
+manual_name_cell_extents_dem_all=manual_dir+'/software/gridding/'+basename+'_name_cell_extents_dem_all.csv'
 name_cell_extents_dem=software_dir+'/gridding/'+basename+'_name_cell_extents_dem.csv'
+name_cell_extents_dem_all=software_dir+'/gridding/tifs/smoothed/'+basename+'_name_cell_extents_dem_all.csv'
 dem_dlist=software_dir+'/gridding/'+basename+'_dem.datalist'
 dem_smooth_factor=5
 #use files listed in existing mb1 files at datalist
-dem_mb1_var='no'
+dem_mb1_var='yes'
 #Conversion Grid Variables
 ivert='mllw'
 overt='navd88'
@@ -172,7 +176,7 @@ for i in manual_dir_list:
 # 		os.makedirs(i)
 
 #Creating main software subdirectories
-software_dir_list=[software_dir+'/gridding']
+software_dir_list=[software_dir+'/gridding',software_dir+'/gridding/smoothed']
 for i in software_dir_list:
 	if not os.path.exists(i):
 		print 'creating subdir', i
@@ -217,6 +221,11 @@ os.system('cp {} {}'.format(manual_name_cell_extents_bs,name_cell_extents_bs))
 os.system('[ -e {} ] && rm {}'.format(name_cell_extents_dem,name_cell_extents_dem))
 # copy csv from manual dir
 os.system('cp {} {}'.format(manual_name_cell_extents_dem,name_cell_extents_dem)) 
+
+#delete csv if it exists
+os.system('[ -e {} ] && rm {}'.format(name_cell_extents_dem_all,name_cell_extents_dem_all))
+# copy csv from manual dir
+os.system('cp {} {}'.format(manual_name_cell_extents_dem_all,name_cell_extents_dem_all)) 
 
 #################################################################
 #################################################################
@@ -645,23 +654,29 @@ else:
 # # # #################################################################
 if dem_format_process=='yes':
 	os.system('cd')
-	os.chdir(software_dir+'/gridding/tifs')
+	os.chdir(software_dir+'/gridding/tifs/smoothed')
 	print 'Current Directory is', os.getcwd()
 	
 	######### CODE MANAGEMENT #########
 
 	#delete shell script if it exists
-	os.system('[ -e create_dem.sh ] && rm create_dem.sh')
+	os.system('[ -e final_mosaic.sh ] && rm final_mosaic.sh')
 	#copy shell script from DEM_generation code
-	os.system('cp {}/create_dem.sh create_dem.sh'.format(code_dir))
+	os.system('cp {}/final_mosaic.sh final_mosaic.sh'.format(code_dir))
 
 	#delete py script if it exists
-	os.system('[ -e smooth_dem_bathy.py ] && rm smooth_dem_bathy.py')
+	os.system('[ -e resample.py ] && rm resample.py')
 	#copy py script from DEM_generation code
-	os.system('cp {}/smooth_dem_bathy.py smooth_dem_bathy.py'.format(code_dir))
+	os.system('cp {}/resample.py resample.py'.format(code_dir))
+
+	#delete py script if it exists
+	os.system('[ -e average_tifs.py ] && rm average_tifs.py')
+	#copy py script from DEM_generation code
+	os.system('cp {}/average_tifs.py average_tifs.py'.format(code_dir))
+
 
 	print "executing create_dem.sh script"
-	os.system('./create_dem.sh {} {} {} {}'.format(name_cell_extents_dem,dem_dlist,dem_smooth_factor,dem_mb1_var))
+	os.system('./final_mosaic.sh {} {} {} {}'.format(name_cell_extents_dem_all,dem_smooth_factor,year,version))
 	####
 else:
 	print "Skipping DEM Formatting Processing"

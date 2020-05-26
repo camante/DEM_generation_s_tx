@@ -3,19 +3,37 @@ tile_extents=$1
 smooth_factor=$2
 year=$3
 version=$4
+border_dems_path=$5
+
 #finest cell size resolution, e.g., 1/9th arc-sec, provided in gdalinfo
 fine_cell=0.000030864197534
+date=$(date --iso-8601=seconds)
+echo date is $date
 
-mkdir -p 1_3
-mkdir -p review
+mkdir -p orig_res
+mkdir -p deliverables
+mkdir -p deliverables/thredds
+
+echo "Copying over any border dems to current directory"
+for file in $border_dems_path*.tif; 
+do
+	echo "copying file to current directory:" $file
+	#[ -e $file ] && rm $file
+	cp $file $(basename $file)
+done
 
 echo "Creating Shps of DEM Extents and any border DEMs"
 for i in *.tif
 do
 	echo "Processing" $i
-	gdal_calc.py -A $i --outfile=$(basename $i .tif)"_zero.tif"  --calc="A*0"
-	gdal_polygonize.py $(basename $i .tif)"_zero.tif" -f "ESRI Shapefile" $(basename $i .tif)".shp"
-	echo "Created shp for" $i
+	if [ -f $(basename $i .tif)".shp" ]; then
+		echo "Extents shp already exists, skipping generation..."
+	else
+		echo "Generating extents shp"
+		gdal_calc.py -A $i --outfile=$(basename $i .tif)"_zero.tif"  --calc="A*0"
+		gdal_polygonize.py $(basename $i .tif)"_zero.tif" -f "ESRI Shapefile" $(basename $i .tif)".shp"
+		echo "Created shp for" $i
+	fi
 
 	raster_cellsize=`gdalinfo $i | grep -e "Pixel Size" | awk '{print $4}' | sed -e 's/.*(\(.*\),.*/\1/'`
 	echo "raster cellsize is" $raster_cellsize
@@ -23,7 +41,6 @@ do
 	if [ "$raster_cellsize" = "$fine_cell" ]
 	then
 		echo "cell size is already at the finest res, no resampling needed"
-		rm $(basename $i .tif)"_zero.tif"
 	else
 		echo "Resampling to the finest resolution to use in mosaic"
 		gdalwarp $(basename $i .tif)"_zero.tif" -tr $fine_cell $fine_cell $(basename $i .tif)"_zero_ninth.tif" -overwrite
@@ -31,12 +48,15 @@ do
 		echo "Resampling Factor float is" $resamp_factor_flt
 		resamp_factor=$(echo "($resamp_factor_flt+0.5)/1" | bc)
 		echo "Resampling factor is" $resamp_factor
+		#note, below script many not work if resolution isn't an even factor of the finest res, ie., 1/3, 1, 3 arc-sec, etc.
 		python ./resample.py $i $(basename $i .tif)"_zero_ninth.tif" $resamp_factor
-		mv $i "1_3/"$(basename $i .tif)"_orig.tif"
+		mv $i "orig_res/"$(basename $i .tif)"_orig.tif"
 		mv $(basename $i .tif)"_resamp.tif" $i
 		rm $(basename $i .tif)"_zero.tif"
 		rm $(basename $i .tif)"_zero_ninth.tif"
 	fi
+	#removing tmp file if it exists
+	[ -f $(basename $i .tif)"_zero.tif"  ] && rm $(basename $i .tif)"_zero.tif" 
 	echo
 done
 
@@ -140,9 +160,18 @@ done
 echo "Creating Mosaic Raster"
 python ./average_tifs.py $name".vrt"
 
-echo "Completing Final Formating of DEM"
+echo "Converting DEM to target cell size"
 gdalwarp -dstnodata -999999 -tr $cellsize_degrees $cellsize_degrees $name"_mosaic.tif" $name"_final_tmp.tif"
-gdal_translate -of GTiff -a_srs EPSG:4269 -a_nodata -999999 -co "COMPRESS=DEFLATE" -co "PREDICTOR=3" -co "TILED=YES" $name"_final_tmp.tif" "review/ncei"$cell_name"_n"$north_degree"X"$north_decimal"_w0"$west_degree"X"$west_decimal"_"$year"v"$version".tif" -stats
+
+echo "Completing Final Formating of DEM"
+gdal_translate $name"_final_tmp.tif" -of GTiff -a_srs EPSG:4269 -a_nodata -999999 -mo TIFFTAG_COPYRIGHT="DOC/NOAA/NESDIS/NCEI > National Centers for Environmental Information, NESDIS, NOAA, U.S. Department of Commerce" -mo TIFFTAG_IMAGEDESCRIPTION="Topography-Bathymetry; NAVD88" -mo TIFFTAG_DATETIME=$date -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=3 "deliverables/ncei"$cell_name"_n"$north_degree"X"$north_decimal"_w0"$west_degree"X"$west_decimal"_"$year"v"$version".tif" -stats
+rm $name"_final_tmp.tif"
+rm $name"_final_tmp.tif.aux.xml"
+
+echo "Converting to NetCDF for thredds"
+#below method causes half cell shift in global mapper but not in arcgis
+#when converted to xyz, it appears in right place in global mapper
+gmt grdconvert "deliverables/ncei"$cell_name"_n"$north_degree"X"$north_decimal"_w0"$west_degree"X"$west_decimal"_"$year"v"$version".tif" "deliverables/thredds/ncei"$cell_name"_n"$north_degree"X"$north_decimal"_w0"$west_degree"X"$west_decimal"_"$year"v"$version".nc" -fg -V
 
 echo "Removing Clipped tifs"
 sed 1d $name"_dem_list.txt" |
@@ -158,16 +187,14 @@ rm $name"_shp_list.txt"
 rm $name"_dem_list.txt"
 rm $name".vrt"
 rm $name"_mosaic.tif"
-rm $name"_final_tmp.tif"
-rm $name"_final_tmp.tif.aux.xml"
 
 echo
 echo
 
 done
 
-echo "Removing all shps"
-rm *.shp
-rm *.shx
-rm *.dbf
-rm *.prj
+# echo "Removing all shps"
+# rm *.shp
+# rm *.shx
+# rm *.dbf
+# rm *.prj

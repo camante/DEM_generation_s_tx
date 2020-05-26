@@ -39,11 +39,13 @@ enc_process='no'
 dc_lidar_process='no'
 tnm_lidar_process='no'
 mx_topo_process='no'
-grid_process='no'
+ncei_dems_process='no'
 bathy_surf_process='no'
 dem_process='no'
-dem_format_process='yes'
-# spatial_meta_process='no'
+final_dem_format_process='no'
+#To Do
+spatial_meta_process='no'
+uncertainty_process='no'
 #################################################################
 #################################################################
 #################################################################
@@ -72,6 +74,7 @@ bs_tifs=data_dir+'/bathy/bathy_surf/tifs'
 coast_shp=data_dir+'/coast/'+basename+'_coast'
 #use files listed in existing mb1 files at datalist
 bs_mb1_var='no'
+#
 #DEM Gridding Variables
 manual_name_cell_extents_dem=manual_dir+'/software/gridding/'+basename+'_name_cell_extents_dem.csv'
 manual_name_cell_extents_dem_all=manual_dir+'/software/gridding/'+basename+'_name_cell_extents_dem_all.csv'
@@ -81,22 +84,30 @@ dem_dlist=software_dir+'/gridding/'+basename+'_dem.datalist'
 dem_smooth_factor=5
 #use files listed in existing mb1 files at datalist
 dem_mb1_var='yes'
+#
+#Spatial Metadata Datalist
+sm_dlist=manual_dir+'/software/gridding/'+basename+'_spatial_meta.datalist'
+#
 #Conversion Grid Variables
 ivert='mllw'
 overt='navd88'
 conv_grd_name='cgrid_'+ivert+'2'+overt+'.tif'
 conv_grd_path=data_dir+'/conv_grd/'+conv_grd_name
+#
+#Manual Data Variables
+#
+#path to border dems to use in final formatting to ensure seamlessness
+#manually place other NCEI tifs that aren't yet on Digital Coast
+ncei_border_dems_path=manual_dir+'/data/grids/ncei/'
+ncei_border_dems_csv=ncei_border_dems_path+'ncei_dems_download_process.csv'
+resamp_res=0.00003086420
 #Lidar Download Variables
 dc_lidar_csv=manual_dir+'/data/dc_lidar/dc_lidar_download_process.csv'
 tnm_lidar_man_path=manual_dir+'/data/topo/tnm_lidar/'
 tnm_lidar_csv=tnm_lidar_man_path+'tnm_lidar_download_process.csv'
-
-#################################################################
-#################################################################
+#
 #################################################################
 ###################### REGION OF INTEREST #######################
-#################################################################
-#################################################################
 #################################################################
 west_buff=-98.05
 east_buff=-96.45
@@ -141,7 +152,7 @@ for i in main_dir_list:
 		os.makedirs(i)
 
 #Creating main data subdirectories
-data_dir_list=[data_dir+'/bathy',data_dir+'/coast',data_dir+'/conv_grd',data_dir+'/dc_lidar',data_dir+'/topo/tnm_lidar',data_dir+'/grids']
+data_dir_list=[data_dir+'/bathy',data_dir+'/coast',data_dir+'/conv_grd',data_dir+'/dc_lidar',data_dir+'/topo/tnm_lidar',data_dir+'/grids/ncei']
 for i in data_dir_list:
 	if not os.path.exists(i):
 		print 'creating subdir', i
@@ -162,18 +173,11 @@ for i in docs_dir_list:
 		os.makedirs(i)
 
 #Creating main manual subdirectories
-manual_dir_list=[manual_dir+'/data/coast',manual_dir+'/data/study_area', manual_dir+'/data/grids/ncei']
+manual_dir_list=[manual_dir+'/data/coast',manual_dir+'/data/study_area']
 for i in manual_dir_list:
 	if not os.path.exists(i):
 		print 'creating subdir', i
 		os.makedirs(i)
-
-# #Creating main DEM grids subdirectories available on Digital Coast / National Map
-# grid_dir_list=[data_dir+'/grids/ncei',data_dir+'/grids/usgs']
-# for i in grid_dir_list:
-# 	if not os.path.exists(i):
-# 		print 'creating subdir', i
-# 		os.makedirs(i)
 
 #Creating main software subdirectories
 software_dir_list=[software_dir+'/gridding',software_dir+'/gridding/smoothed']
@@ -203,6 +207,13 @@ echo {} -1 0.000001 >> {}
 fi'''.format(dem_dlist,dem_dlist,bs_ind_dlist,dem_dlist)
 os.system(create_dem_dlist)
 
+#Spatial Metadata
+#At the end, manually populate spatial metadata master datalist
+create_sm_dlist='''if [ ! -e {} ] ; 
+then touch {}
+fi'''.format(sm_dlist,sm_dlist)
+os.system(create_sm_dlist)
+
 #################################################################
 #################################################################
 #################################################################
@@ -211,7 +222,6 @@ os.system(create_dem_dlist)
 #################################################################
 #################################################################
 #Copy Name Cell Extents from Manual Directories
-
 #delete csv if it exists
 os.system('[ -e {} ] && rm {}'.format(name_cell_extents_bs,name_cell_extents_bs))
 # copy csv from manual dir
@@ -259,10 +269,13 @@ else:
 #manually created shp in Global Mapper / ArcGIS (s_tx_tiles.shp) 
 #created name_cell_extents with arcpy get_poly_coords.py (name_cell_extents_bs.csv; name_cell_extents_DEM.csv) 
 #manually created study area buffer in ArcMap (s_tx_tiles_buff.shp)
-#manually created outer buffer to grab adjacenet NCEI tiles DEMs (s_tx_tiles_buff_outer.shp) using arcmap erase(s_tx_tiles_buff.shp,s_tx_tiles.shp)
-# #################################################################
-# ######################## COASTLINE ##############################
-# #################################################################
+#manually created outer buffer to grab adjacent NCEI tiles DEMs (s_tx_tiles_buff_outer.shp) using arcmap erase(s_tx_tiles_buff.shp,s_tx_tiles.shp)
+#
+#This could all be automated in ogr?
+#
+##################################################################
+######################### COASTLINE ##############################
+##################################################################
 if coast_process=='yes':
 	os.chdir(data_dir+'/coast')
 	print 'Current Directory is', os.getcwd()
@@ -286,10 +299,12 @@ if coast_process=='yes':
 else:
 	print "Skipping Coastline Processing"
 
-# #################################################################
-# ########################## BATHY ################################
-# #################################################################
-# ####################### USACE DREDGE #############################
+##################################################################
+########################### BATHY ################################
+##################################################################
+######################## USACE DREDGE ############################
+##################################################################
+
 if usace_dredge_process=='yes':
 	os.system('cd')
 	os.chdir(data_dir+'/bathy/usace_dredge')
@@ -565,38 +580,45 @@ else:
 	print "Skipping MX Topo Processing"
 
 #############################################################
-################## EXISTING GRIDS ###########################
+################## NCEI DEMS ################################
 #############################################################
-if grid_process=='yes':
+# NOTE: THIS COMPONENT IS NOT YET IMPLEMENTED/TESTED
+# Waiting on Stiller DEMs to be complete
+#
+if ncei_dems_process=='yes':
 	os.system('cd')
-	os.chdir(manual_dir+'/data/grids/ncei')
+	os.chdir(data_dir+'/grids/ncei')
 	print 'Current Directory is', os.getcwd()
 	
 	######### CODE MANAGEMENT #########
-	os.system('mkdir -p xyz')
-
 	#delete shell script if it exists
-	os.system('[ -e grids_ncei_processing.sh.sh ] && rm grids_ncei_processing.sh')
+	os.system('[ -e download_process_ncei_dems.sh ] && rm download_process_ncei_dems.sh')
 	#copy shell script from DEM_generation code
-	os.system('cp {}/grids_ncei_processing.sh grids_ncei_processing.sh'.format(code_dir))
+	os.system('cp {}/download_process_ncei_dems.sh download_process_ncei_dems.sh'.format(code_dir))
 
 	#delete shell script if it exists
-	os.system('[ -e xyz/create_datalist.sh ] && rm xyz/create_datalist.sh')
+	os.system('[ -e tif2chunks2xyz.sh ] && rm tif2chunks2xyz.sh')
 	#copy sh script from DEM_generation code
-	os.system('cp {}/create_datalist.sh xyz/create_datalist.sh'.format(code_dir)) 
+	os.system('cp {}/tif2chunks2xyz.sh tif2chunks2xyz.sh'.format(code_dir))
 
-	print "executing grids_ncei_processing.sh script"
-	os.system('./grids_ncei_processing.sh {} {} {}'.format(study_area_buff_outer_shp,bs_dlist,dem_dlist))
+	#delete shell script if it exists
+	os.system('[ -e create_datalist.sh ] && rm create_datalist.sh')
+	#copy sh script from DEM_generation code
+	os.system('cp {}/create_datalist.sh create_datalist.sh'.format(code_dir))
+
+	print "executing NCEI DEMs processing script"
+	os.system('./download_process_ncei_dems.sh {} {} {} {} {} {}'.format(ncei_border_dems_path,ncei_border_dems_csv,study_area_buff_outer_shp,resamp_res,bs_dlist,dem_dlist))
 	####
 else:
-	print "Skipping Grids_ncei Processing"
-# # #################################################################
-# # #################################################################
-# # #################################################################
-# # ####################### BATHY SURFACE ###########################
-# # #################################################################
-# # #################################################################
-# # #################################################################
+	print "Skipping NCEI DEM Processing"
+
+###################################################################
+###################################################################
+###################################################################
+######################### BATHY SURFACE ###########################
+###################################################################
+###################################################################
+###################################################################
 if bathy_surf_process=='yes':
 	os.system('cd')
 	os.chdir(data_dir+'/bathy/bathy_surf')
@@ -615,13 +637,13 @@ if bathy_surf_process=='yes':
 else:
 	print "Skipping Bathy Surface Processing"
 
-# # # #################################################################
-# # # #################################################################
-# # # #################################################################
-# # # ####################### DEM GENERATION ##########################
-# # # #################################################################
-# # # #################################################################
-# # # #################################################################
+####################################################################
+####################################################################
+####################################################################
+########################## DEM GENERATION ##########################
+####################################################################
+####################################################################
+####################################################################
 if dem_process=='yes':
 	os.system('cd')
 	os.chdir(software_dir+'/gridding')
@@ -645,14 +667,14 @@ if dem_process=='yes':
 else:
 	print "Skipping DEM Processing"
 
-# # # #################################################################
-# # # #################################################################
-# # # #################################################################
-# # # ####################### DEM FORMATTING ##########################
-# # # #################################################################
-# # # #################################################################
-# # # #################################################################
-if dem_format_process=='yes':
+####################################################################
+####################################################################
+####################################################################
+########################## FINAL DEM FORMATTING ####################
+####################################################################
+####################################################################
+####################################################################
+if final_dem_format_process=='yes':
 	os.system('cd')
 	os.chdir(software_dir+'/gridding/tifs/smoothed')
 	print 'Current Directory is', os.getcwd()
@@ -660,9 +682,9 @@ if dem_format_process=='yes':
 	######### CODE MANAGEMENT #########
 
 	#delete shell script if it exists
-	os.system('[ -e final_mosaic.sh ] && rm final_mosaic.sh')
+	os.system('[ -e final_dem_format.sh ] && rm final_dem_format.sh')
 	#copy shell script from DEM_generation code
-	os.system('cp {}/final_mosaic.sh final_mosaic.sh'.format(code_dir))
+	os.system('cp {}/final_dem_format.sh final_dem_format.sh'.format(code_dir))
 
 	#delete py script if it exists
 	os.system('[ -e resample.py ] && rm resample.py')
@@ -676,7 +698,24 @@ if dem_format_process=='yes':
 
 
 	print "executing create_dem.sh script"
-	os.system('./final_mosaic.sh {} {} {} {}'.format(name_cell_extents_dem_all,dem_smooth_factor,year,version))
+	os.system('./final_dem_format.sh {} {} {} {} {}'.format(name_cell_extents_dem_all,dem_smooth_factor,year,version,ncei_border_dems_path))
 	####
 else:
 	print "Skipping DEM Formatting Processing"
+
+####################################################################
+####################################################################
+####################################################################
+########################## SPATIAL METADATA ########################
+####################################################################
+####################################################################
+####################################################################
+if spatial_meta_process=='yes':
+	os.system('cd')
+	os.chdir(software_dir+'/gridding/tifs/smoothed')
+	print 'Current Directory is', os.getcwd()
+	
+	######### CODE MANAGEMENT #########
+
+else:
+	print "Skipping Spatial Metadata Generation"

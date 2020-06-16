@@ -30,6 +30,7 @@ roi_str_gmt=sys.argv[1]
 conv_grd_path=sys.argv[2]
 bs_dlist=sys.argv[3]
 dem_dlist=sys.argv[4]
+lastools_dir=sys.argv[5]
 
 print "Current directory is ", os.getcwd()
 print 'Downloading USACE Channel Surveys'
@@ -133,3 +134,18 @@ os.system(add_to_bmaster_cmd)
 add_to_master_cmd='echo ' + current_dir + '/usace_dredge.datalist -1 10 >> ' + dem_dlist
 os.system(add_to_master_cmd)
 
+print "Creating Interpolated Points between Surveys"
+usace_interp_cmd='./usace_interp.sh ' + lastools_dir + ' 0.00009259259 10 0.00003086420'
+os.system(usace_interp_cmd)
+
+print "Creating datalist"
+os.chdir('interp')
+usace_interp_datalist_cmd='./create_datalist.sh usace_dredge_interp'
+os.system(usace_interp_datalist_cmd)
+
+current_dir=os.getcwd()
+add_to_bmaster_cmd2='echo ' + current_dir + '/usace_dredge_interp.datalist -1 0.00001 >> ' + bs_dlist
+os.system(add_to_bmaster_cmd2)
+
+add_to_master_cmd2='echo ' + current_dir + '/usace_dredge_interp.datalist -1 0.00001 >> ' + dem_dlist
+os.system(add_to_master_cmd2)

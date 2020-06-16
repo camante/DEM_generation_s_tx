@@ -40,8 +40,8 @@ dc_lidar_process='no'
 tnm_lidar_process='no'
 mx_topo_process='no'
 ncei_dems_process='no'
-bathy_surf_process='no'
-dem_process='no'
+bathy_surf_process='yes'
+dem_process='yes'
 final_dem_format_process='no'
 #To Do
 spatial_meta_process='no'
@@ -64,6 +64,7 @@ docs_dir=main_dir+'/docs'
 manual_dir=main_dir+'/manual'
 software_dir=main_dir+'/software'
 code_dir=main_dir+'/code/DEM_generation'+'_'+basename
+lastools_dir='/media/sf_C_win_lx/software/LAStools/bin/'
 #Bathy Surface Variables
 manual_name_cell_extents_bs=manual_dir+'/data/bathy/bathy_surf/'+basename+'_name_cell_extents_bs.csv'
 name_cell_extents_bs=data_dir+'/bathy/bathy_surf/'+basename+'_name_cell_extents_bs.csv'
@@ -83,7 +84,7 @@ name_cell_extents_dem_all=software_dir+'/gridding/tifs/smoothed/'+basename+'_nam
 dem_dlist=software_dir+'/gridding/'+basename+'_dem.datalist'
 dem_smooth_factor=5
 #use files listed in existing mb1 files at datalist
-dem_mb1_var='yes'
+dem_mb1_var='no'
 #
 #Spatial Metadata Datalist
 sm_dlist=manual_dir+'/software/gridding/'+basename+'_spatial_meta.datalist'
@@ -316,6 +317,7 @@ if usace_dredge_process=='yes':
 	os.system('mkdir -p csv')
 	os.system('mkdir -p xyz')
 	os.system('mkdir -p xyz/navd88')
+	os.system('mkdir -p xyz/navd88/interp')
 
 	#delete python script if it exists
 	os.system('[ -e usace_dredge_processing.py ] && rm usace_dredge_processing.py')
@@ -340,10 +342,20 @@ if usace_dredge_process=='yes':
 	#delete shell script if it exists
 	os.system('[ -e xyz/navd88/create_datalist.sh ] && rm xyz/navd88/create_datalist.sh')
 	#copy sh script from DEM_generation code
-	os.system('cp {}/create_datalist.sh xyz/navd88/create_datalist.sh'.format(code_dir)) 
+	os.system('cp {}/create_datalist.sh xyz/navd88/create_datalist.sh'.format(code_dir))
+
+	#delete shell script if it exists
+	os.system('[ -e xyz/navd88/usace_interp.sh ] && rm xyz/navd88/usace_interp.sh')
+	#copy sh script from DEM_generation code
+	os.system('cp {}/usace_interp.sh xyz/navd88/usace_interp.sh'.format(code_dir))
+
+	#delete shell script if it exists
+	os.system('[ -e xyz/navd88/interp/create_datalist.sh ] && rm xyz/navd88/interp/create_datalist.sh')
+	#copy sh script from DEM_generation code
+	os.system('cp {}/create_datalist.sh xyz/navd88/interp/create_datalist.sh'.format(code_dir)) 
 
 	print "executing usace_dredge_processing script"
-	os.system('./usace_dredge_processing.py {} {} {} {}'.format(roi_str_gmt, conv_grd_path, bs_dlist, dem_dlist))
+	os.system('./usace_dredge_processing.py {} {} {} {} {}'.format(roi_str_gmt, conv_grd_path, bs_dlist, dem_dlist, lastools_dir))
 else:
 	print "Skipping USACE Dredge Processing"
 ######################### Multibeam #############################

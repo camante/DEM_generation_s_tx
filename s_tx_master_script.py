@@ -40,7 +40,7 @@ dc_lidar_process='no'
 tnm_lidar_process='no'
 mx_topo_process='no'
 ncei_dems_process='no'
-bathy_surf_process='yes'
+bathy_surf_process='no'
 dem_process='yes'
 final_dem_format_process='no'
 #To Do
@@ -198,7 +198,7 @@ for i in software_dir_list:
 #Add topo guide to bathy surface datalist
 create_bs_dlist='''if [ ! -e {} ] ; 
 then touch {}
-echo {} -1 0.000001 >> {}
+echo {} -1 0.01 >> {}
 fi'''.format(bs_dlist,bs_dlist,bs_topo_guide_dlist,bs_dlist)
 os.system(create_bs_dlist)
 

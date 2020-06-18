@@ -144,123 +144,34 @@ if [ ${#@} == 4 ];
 	#############################################################################
 
 	#Create Topo Guide for 1/9th Arc-Sec Topobathy DEMs if they don't already exist
-	#This adds in values of zero to constain interpolation in inland areas without data.
+	#This adds in values of -0.1 to constain interpolation in inland areas without data.
 	if [[ "$target_res" = 0.00003086420 && ! -e "topo_guide/"$name"_tguide.xyz" ]]
 		then 
 		echo -- Creating Topo Guide...
-
-		#create empty raster with zero values
-		#first, create csv file
-		touch $name"_bbox.csv"
-		echo "lon,lat,elev" >> $name"_bbox.csv"
-		echo "$west_grdsamp,$north_grdsamp,0" >> $name"_bbox.csv"
-		echo "$west_grdsamp,$south_grdsamp,0" >> $name"_bbox.csv"
-		echo "$east_grdsamp,$north_grdsamp,0" >> $name"_bbox.csv"
-		echo "$east_grdsamp,$south_grdsamp,0" >> $name"_bbox.csv"
-
-		echo "
-		<OGRVRTDataSource>
-		    <OGRVRTLayer name=$name"_bbox">
-		        <SrcDataSource>$name"_bbox.csv"</SrcDataSource>
-		        <GeometryType>wkbPoint</GeometryType>
-		        <GeometryField encoding="PointFromColumns" x="lon" y="lat" z="elev"/>
-		    </OGRVRTLayer>
-		</OGRVRTDataSource>
-		" >> $name"_bbox.vrt"
-
-		gdal_grid -a nearest:radius1=0.0:radius2=0.0:angle=0.0:nodata=0.0 -txe $west_grdsamp $east_grdsamp -tye $south_grdsamp $north_grdsamp -outsize $x_dim_int_grdsamp $y_dim_int_grdsamp -of GTiff -ot Float32 -l $name"_bbox" $name"_bbox.vrt" $name"_tg.tif"
-		gdal_edit.py -a_srs epsg:4269 $name"_tg.tif"
-
-		rm $name"_bbox.csv"
-		rm $name"_bbox.vrt"
-
-		echo -- Getting the extents of the raster
-		x_min_tmp=`gmt grdinfo $name"_tg.tif" | grep -e "x_min" | awk '{print $3}'`
-		x_max_tmp=`gmt grdinfo $name"_tg.tif" | grep -e "x_max" | awk '{print $5}'`
-		y_min_tmp=`gmt grdinfo $name"_tg.tif" | grep -e "y_min" | awk '{print $3}'`
-		y_max_tmp=`gmt grdinfo $name"_tg.tif" | grep -e "y_max" | awk '{print $5}'`
-
 		#Add on 6 more cells just to make sure there is no edge effects when burnining in shp.
-		x_min=$(echo "$x_min_tmp - $six_cells_target" | bc -l)
-		x_max=$(echo "$x_max_tmp + $six_cells_target" | bc -l)
-		y_min=$(echo "$y_min_tmp - $six_cells_target" | bc -l)
-		y_max=$(echo "$y_max_tmp + $six_cells_target" | bc -l)
+		x_min=$(echo "$west_grdsamp - $six_cells_target" | bc -l)
+		x_max=$(echo "$east_grdsamp + $six_cells_target" | bc -l)
+		y_min=$(echo "$south_grdsamp - $six_cells_target" | bc -l)
+		y_max=$(echo "$north_grdsamp + $six_cells_target" | bc -l)
 
 		echo -- Clipping coastline shp to grid extents
 		ogr2ogr $name"_coast.shp" $coastline_full".shp" -clipsrc $x_min $y_min $x_max $y_max
 
-		echo -- Setting Topo to -0.1 Prior to Gridding
-		gdal_rasterize -burn -0.1 -l $name"_coast" $name"_coast.shp" $name"_tg.tif"
-
-		#Tiling
-		tile_x_div=12
-		tile_y_div=12
-
-		#get input grid dimensions
-		x_dim=`gdalinfo $name"_tg.tif" | grep -e "Size is" | awk '{print $3}' | sed 's/.$//'`
-		y_dim=`gdalinfo $name"_tg.tif" | grep -e "Size is" | awk '{print $4}'`
-
-		#calculate tile grid dimensions
-		tile_dim_x_tmp=$(echo "$x_dim / $tile_x_div" | bc -l)
-		tile_dim_x_int=$(echo "($tile_dim_x_tmp+0.5)/1" | bc)
-
-		tile_dim_y_tmp=$(echo "$y_dim / $tile_y_div" | bc -l)
-		tile_dim_y_int=$(echo "($tile_dim_y_tmp+0.5)/1" | bc)
-
-		#initiate tile names with numbers, starting with 1
-		tile_name="1"
-		#remove file extension to get basename from input file
-		input_name=${input_file::-4}
-		#starting point for tiling
-		xoff=0
-		yoff=0
-
-		while [ "$(bc <<< "$xoff < $x_dim")" == "1"  ]; do
-		    yoff=0
-		    while [ "$(bc <<< "$yoff < $y_dim")" == "1"  ]; do
-		    tile_name_full="guide_xyz_"$name"_t"$tile_name".tif"
-		    echo creating tile $tile_name_full
-		    echo xoff is $xoff
-		    echo yoff is $yoff
-		    echo tile_dim_x_int is $tile_dim_x_int
-		    echo tile_dim_y_int $tile_dim_y_int
-		    gdal_translate -of GTiff -a_nodata 999999 -srcwin $xoff $yoff $tile_dim_x_int $tile_dim_y_int $name"_tg.tif" $tile_name_full -stats
-		    z_min=`gmt grdinfo $tile_name_full | grep -e "z_min" | awk '{print $3}'`
-		    echo "z_min is" $z_min
-		    if (( $(echo "$z_min > -0.000001" | bc -l) ));
-			then
-			      echo "tile is all bathy data with zeroes, deleting..."
-			      rm $tile_name_full
-			else
-			      echo "tile has data, keeping..."
-			      echo -- Converting to xyz, only keeping negative values
-			      gdal_translate -of XYZ $tile_name_full $tile_name_full"_tmp.xyz"
-			      awk '{if ($3 < -0.00) {printf "%.7f %.7f %.2f\n", $1,$2,$3}}' $tile_name_full"_tmp.xyz" > $tile_name_full".xyz"
-			      echo -- Converted to xyz
-			      rm $tile_name_full
-			      rm $tile_name_full"_tmp.xyz"
-			      mv $tile_name_full".xyz" topo_guide/$tile_name_full".xyz" 
-			fi
-			yoff=$(echo "$yoff+$tile_dim_y_int" | bc)
-		    tile_name=$((tile_name+1))
-		    done
-		  xoff=$(echo "$xoff+$tile_dim_x_int" | bc)
-		done
+		echo -- Densifying Coastline Shapefile
+		ogr2ogr -f "ESRI Shapefile" -segmentize 0.000001 tmp.shp $name"_coast.shp"
+		echo -- Converting to CSV
+		ogr2ogr -f CSV -dialect sqlite -sql "select AsGeoJSON(geometry) AS geom, * from tmp" tmp.csv tmp.shp
+		echo -- Formatting XYZ
+		sed 's/],/\n/g' tmp.csv | sed 's|[[]||g' | sed 's|[]]||g' | sed 's/}","0"//g' | sed 's/geom,DN//g' | sed 's/"{""type"":""Polygon"",""coordinates""://g' | sed '/^$/d' | sed 's/$/,-0.1/' > topo_guide/$name"_tguide.xyz"
 		
-		rm $name"_tg.tif"
-		
+		rm tmp.shp
+		rm tmp.dbf
+		rm tmp.prj
+		rm tmp.shx
+		rm tmp.csv
+
 		echo -- Creating Datalist for Topo Guide
 		cd topo_guide
-
-		#cat 
-		cat *guide_xyz* >  $name"_topo_guide_all.xyz"
-		rm *guide_xyz*
-
-		echo -- Randomly Sampling 100000 xyz pnts
-		shuf -n 100000 $name"_topo_guide_all.xyz" > $name"_tguide.xyz"
-
-		rm $name"_topo_guide_all.xyz"
-
 		ls *.xyz > temp
 		awk '{print $1, 168}' temp > topo_guide.datalist
 		rm temp

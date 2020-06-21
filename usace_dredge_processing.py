@@ -144,8 +144,8 @@ usace_interp_datalist_cmd='./create_datalist.sh usace_dredge_interp'
 os.system(usace_interp_datalist_cmd)
 
 current_dir=os.getcwd()
-add_to_bmaster_cmd2='echo ' + current_dir + '/usace_dredge_interp.datalist -1 0.00001 >> ' + bs_dlist
+add_to_bmaster_cmd2='echo ' + current_dir + '/usace_dredge_interp.datalist -1 1 >> ' + bs_dlist
 os.system(add_to_bmaster_cmd2)
 
-add_to_master_cmd2='echo ' + current_dir + '/usace_dredge_interp.datalist -1 0.00001 >> ' + dem_dlist
+add_to_master_cmd2='echo ' + current_dir + '/usace_dredge_interp.datalist -1 0.1 >> ' + dem_dlist
 os.system(add_to_master_cmd2)

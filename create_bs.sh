@@ -143,9 +143,9 @@ if [ ${#@} == 4 ];
 	#############################################################################
 	#############################################################################
 
-	#Create Topo Guide for 1/9th Arc-Sec Topobathy DEMs if they don't already exist
+	#Create Topo Guide for 1/9th Arc-Sec Topobathy DEMs
 	#This adds in values of -0.1 to constain interpolation in inland areas without data.
-	if [[ "$target_res" = 0.00003086420 && ! -e "topo_guide/"$name"_tguide.xyz" ]]
+	if [[ "$target_res" = 0.00003086420 ]]
 		then 
 		echo -- Creating Topo Guide...
 		#Add on 6 more cells just to make sure there is no edge effects when burnining in shp.
@@ -182,7 +182,7 @@ if [ ${#@} == 4 ];
 		cd .. 
 
 	else
-		echo "Topo guide already exists or DEM is bathy 1/3rd, no need for topo guide"
+		echo "DEM is bathy 1/3rd, no need for topo guide"
 	fi
 
 

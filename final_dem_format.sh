@@ -41,6 +41,8 @@ do
 	if [ "$raster_cellsize" = "$fine_cell" ]
 	then
 		echo "cell size is already at the finest res, no resampling needed"
+		#if at finest res, don't need to keep zero raster
+		[ -f $(basename $i .tif)"_zero.tif"  ] && rm $(basename $i .tif)"_zero.tif" 
 	else
 		echo "Resampling to the finest resolution to use in mosaic"
 		gdalwarp $(basename $i .tif)"_zero.tif" -tr $fine_cell $fine_cell $(basename $i .tif)"_zero_ninth.tif" -overwrite
@@ -50,13 +52,11 @@ do
 		echo "Resampling factor is" $resamp_factor
 		#note, below script many not work if resolution isn't an even factor of the finest res, ie., 1/3, 1, 3 arc-sec, etc.
 		python ./resample.py $i $(basename $i .tif)"_zero_ninth.tif" $resamp_factor
-		mv $i "orig_res/"$(basename $i .tif)"_orig.tif"
+		mv $i "orig_res/"$i
 		mv $(basename $i .tif)"_resamp.tif" $i
 		rm $(basename $i .tif)"_zero.tif"
 		rm $(basename $i .tif)"_zero_ninth.tif"
 	fi
-	#removing tmp file if it exists
-	[ -f $(basename $i .tif)"_zero.tif"  ] && rm $(basename $i .tif)"_zero.tif" 
 	echo
 done
 

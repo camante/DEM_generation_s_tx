@@ -42,9 +42,9 @@ mx_topo_process='no'
 ncei_dems_process='no'
 bathy_surf_process='no'
 dem_process='no'
-final_dem_format_process='yes'
+final_dem_format_process='no'
 #To Do
-spatial_meta_process='no'
+spatial_meta_process='yes'
 uncertainty_process='no'
 #################################################################
 #################################################################
@@ -88,6 +88,8 @@ dem_mb1_var='yes'
 #
 #Spatial Metadata Datalist
 sm_dlist=manual_dir+'/software/gridding/'+basename+'_spatial_meta.datalist'
+name_cell_extents_sm=manual_dir+'/software/gridding/'+basename+'_name_cell_extents_sm.csv'
+sm_res='0.3333333333s'
 #
 #Conversion Grid Variables
 ivert='mllw'
@@ -184,7 +186,7 @@ for i in manual_dir_list:
 		os.makedirs(i)
 
 #Creating main software subdirectories
-software_dir_list=[software_dir+'/gridding',software_dir+'/gridding/smoothed']
+software_dir_list=[software_dir+'/gridding',software_dir+'/gridding/tifs',software_dir+'/gridding/tifs/smoothed',software_dir+'/gridding/tifs/smoothed/deliverables',software_dir+'/gridding/tifs/smoothed/deliverables/thredds',software_dir+'/gridding/tifs/smoothed/deliverables/spatial_meta']
 for i in software_dir_list:
 	if not os.path.exists(i):
 		print 'creating subdir', i
@@ -727,10 +729,20 @@ else:
 ####################################################################
 if spatial_meta_process=='yes':
 	os.system('cd')
-	os.chdir(software_dir+'/gridding/tifs/smoothed')
+	os.chdir(software_dir+'/gridding/tifs/smoothed/deliverables/spatial_meta')
 	print 'Current Directory is', os.getcwd()
 	
 	######### CODE MANAGEMENT #########
+	#delete shell script if it exists
+	os.system('[ -e create_spatial_meta.sh ] && rm create_spatial_meta.sh')
+
+	#copy shell script from DEM_generation code
+	os.system('cp {}/create_spatial_meta.sh create_spatial_meta.sh'.format(code_dir))
+
+	print "executing create_spatial_meta.sh script"
+	os.system('./create_spatial_meta.sh {} {} {} {} {}'.format(name_cell_extents_sm,sm_dlist,sm_res,year,version))
+	####
 
 else:
 	print "Skipping Spatial Metadata Generation"
+

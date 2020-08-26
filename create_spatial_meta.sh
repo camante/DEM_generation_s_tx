@@ -138,7 +138,6 @@ else
 fi
 
 #test
-extend=18
 
 echo "Starting Spatial Metadata Generation"
 output_name="ncei"$cell_name"_n"$north_degree"X"$north_decimal"_w0"$west_degree"X"$west_decimal"_"$year"v"$version

@@ -90,7 +90,7 @@ then
 	echo "LAZ isn't topobathy and doesn't have second class"
 	./create_datalist.sh $dir_name"_lidar"
 	echo "$PWD/$dir_name"_lidar".datalist -1 "$weight >> $dem_dlist
-	rm *.laz
+	#rm *.laz
 else
 	echo "LAZ has valid second class"
 	./laz2xyz.sh $second_class
@@ -106,7 +106,7 @@ else
 	echo "$PWD/$dir_name"_lidar_neg".datalist -1 "$weight >> $bs_dlist
 	echo "$PWD/$dir_name"_lidar_neg".datalist -1 "$weight >> $dem_dlist
 	cd ..
-	rm *.laz
+	#rm *.laz
 fi
 
 cd ..

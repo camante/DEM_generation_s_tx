@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function help () {
-echo "las2xyz - Converts all .laz files in a directory to .xyz files for a provided classification, blockmedians xyz to 1/10th arc-sec, and gzips original xyz"
+echo "las2xyz - A simple script that converts all .laz files in a directory to .xyz files for a provided classification"
 	echo "Usage: $0 class"
 	echo "* class: <the desired lidar return>
 	0 Never classified
@@ -30,7 +30,7 @@ echo "Total number of laz files to process:" $total_files
 
 file_num=1
 
-#see if 1 parameters were provided
+#see if 5 parameters were provided
 #show help if not
 if [ ${#@} == 1 ]; 
 then
@@ -40,27 +40,9 @@ then
 	do
 		#Create tmp text file of lasinfo for each lidar file
 		echo "Processing File" $file_num "out of" $total_files
-
-		if [ -f $(basename $i .laz)"_class_"$class"_bm.xyz" ]; then
-		echo "bm xyz already exists, skipping..."
-		else
 		echo "Processing" $i
 		las2txt -i $i -keep_class $class -o $(basename $i .laz)"_class_"$class.xyz -parse xyz
-		
-		num_lines=$(< "$(basename $i .laz)"_class_"$class".xyz"" wc -l)
-		echo "Number of lines in XYZ file is" $num_lines
-			if (( $num_lines > 1000 )); then
-			echo "Large file, running blockmedian"
-			gmt blockmedian $(basename $i .laz)"_class_"$class.xyz -I0.1s $(gmt gmtinfo $(basename $i .laz)"_class_"$class.xyz -I-) -Q > $(basename $i .laz)"_class_"$class"_bm.xyz";
-			else
-			echo "Small file, skipping blockmedian"
-			cp $(basename $i .laz)"_class_"$class.xyz $(basename $i .laz)"_class_"$class"_bm.xyz"
-			fi
-			echo "Gzipping original xyz"
-			gzip $(basename $i .laz)"_class_"$class.xyz;
-		fi
 		file_num=$((file_num + 1))
-		echo
 	done
 else
 	help

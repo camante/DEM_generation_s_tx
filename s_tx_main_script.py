@@ -42,7 +42,7 @@ mx_topo_process='no'
 ncei_dems_process='no'
 bathy_surf_process='no'
 dem_process='no'
-final_dem_format_process='no'
+final_dem_format_process='yes'
 #To Do
 spatial_meta_process='yes'
 uncertainty_process='no'
@@ -74,7 +74,7 @@ bs_ind_dlist=data_dir+'/bathy/bathy_surf/xyz/bathy_surf.datalist'
 bs_tifs=data_dir+'/bathy/bathy_surf/tifs'
 coast_shp=data_dir+'/coast/'+basename+'_coast'
 #use files listed in existing mb1 files at datalist
-bs_mb1_var='yes'
+bs_mb1_var='no'
 #
 #DEM Gridding Variables
 manual_name_cell_extents_dem=manual_dir+'/software/gridding/'+basename+'_name_cell_extents_dem.csv'
@@ -84,7 +84,7 @@ name_cell_extents_dem_all=software_dir+'/gridding/tifs/smoothed/'+basename+'_nam
 dem_dlist=software_dir+'/gridding/'+basename+'_dem.datalist'
 dem_smooth_factor=5
 #use files listed in existing mb1 files at datalist
-dem_mb1_var='yes'
+dem_mb1_var='no'
 #
 #Spatial Metadata Datalist
 sm_dlist=manual_dir+'/software/gridding/'+basename+'_spatial_meta.datalist'

@@ -2,7 +2,7 @@
 
 function help () {
 echo "las2xyz - Converts all .laz files in a directory to .xyz files for a provided classification, blockmedians xyz to 1/10th arc-sec, and gzips original xyz"
-	echo "Usage: $0 class"
+	echo "Usage: $0 change_class output_class"
 	echo "* class: <the desired lidar return>
 	0 Never classified
 	1 Unassigned
@@ -32,10 +32,11 @@ file_num=1
 
 #see if 1 parameters were provided
 #show help if not
-if [ ${#@} == 1 ]; 
+if [ ${#@} == 2 ]; 
 then
 	#User inputs    	
-	class=$1
+	change_class=$1
+	class=$2
 	for i in *.laz;
 	do
 		#Create tmp text file of lasinfo for each lidar file
@@ -45,8 +46,14 @@ then
 		echo "bm xyz already exists, skipping..."
 		else
 		echo "Processing" $i
-		las2txt -i $i -keep_class $class -o $(basename $i .laz)"_class_"$class.xyz -parse xyz
-		
+		#change_class=40
+		#class=12
+		echo "Changing class from" $change_class "to" $class
+		las2las -i $i -change_classification_from_to $change_class $class -o $(basename $i .laz)"_change_class_"$class.laz
+		echo "Converting new class" $class "to xyz"
+		las2txt -i $(basename $i .laz)"_change_class_"$class.laz -keep_class $class -o $(basename $i .laz)"_class_"$class.xyz -parse xyz
+		rm $(basename $i .laz)"_change_class_"$class.laz
+
 		num_lines=$(< "$(basename $i .laz)"_class_"$class".xyz"" wc -l)
 		echo "Number of lines in XYZ file is" $num_lines
 			if (( $num_lines > 1000 )); then
